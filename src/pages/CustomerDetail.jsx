@@ -11,7 +11,7 @@ const WINDOW_TYPES = [
   'Window Cleaning (Interior and Exterior)',
 ]
 
-const TRACKS_OPTIONS = ['None', 'Tracks & Screens Cleaning']
+const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
 
 function nextStatus(status) {
   const idx = STATUS_FLOW.indexOf(status)
