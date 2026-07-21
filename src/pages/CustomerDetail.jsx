@@ -6,6 +6,13 @@ import QuoteEmailModal from '../components/QuoteEmailModal'
 
 const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
 
+const WINDOW_TYPES = [
+  'Window Cleaning (Exterior Only)',
+  'Window Cleaning (Interior and Exterior)',
+]
+
+const TRACKS_OPTIONS = ['None', 'Tracks & Screens Cleaning']
+
 function nextStatus(status) {
   const idx = STATUS_FLOW.indexOf(status)
   return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null
@@ -19,8 +26,10 @@ export default function CustomerDetail() {
   const [showForm, setShowForm] = useState(false)
   const [quoteEmail, setQuoteEmail] = useState(null)
   const [form, setForm] = useState({
-    service_type: 'Window Cleaning',
-    price: '',
+    windowType: WINDOW_TYPES[0],
+    windowPrice: '',
+    tracksOption: TRACKS_OPTIONS[0],
+    tracksPrice: '',
     scheduled_date: '',
     notes: '',
   })
@@ -42,14 +51,27 @@ export default function CustomerDetail() {
 
   async function handleAddJob(e) {
     e.preventDefault()
+
+    const hasTracks = form.tracksOption !== 'None'
+    const serviceType = hasTracks ? `${form.windowType} + ${form.tracksOption}` : form.windowType
+    const total = (form.windowPrice ? Number(form.windowPrice) : 0)
+      + (hasTracks && form.tracksPrice ? Number(form.tracksPrice) : 0)
+
     await supabase.from('jobs').insert([{
       customer_id: id,
-      service_type: form.service_type,
-      price: form.price ? Number(form.price) : null,
+      service_type: serviceType,
+      price: total > 0 ? total : null,
       scheduled_date: form.scheduled_date || null,
       notes: form.notes,
     }])
-    setForm({ service_type: 'Window Cleaning', price: '', scheduled_date: '', notes: '' })
+    setForm({
+      windowType: WINDOW_TYPES[0],
+      windowPrice: '',
+      tracksOption: TRACKS_OPTIONS[0],
+      tracksPrice: '',
+      scheduled_date: '',
+      notes: '',
+    })
     setShowForm(false)
     loadData()
   }
@@ -98,14 +120,28 @@ export default function CustomerDetail() {
 
       {showForm && (
         <form className="card form-grid" onSubmit={handleAddJob}>
-          <select value={form.service_type}
-            onChange={(e) => setForm({ ...form, service_type: e.target.value })}>
-            <option value="Window Cleaning">Window Cleaning</option>
-            <option value="Screen & Track Cleaning">Screen &amp; Track Cleaning</option>
-            <option value="Other">Other</option>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            Window Cleaning
+          </label>
+          <select value={form.windowType}
+            onChange={(e) => setForm({ ...form, windowType: e.target.value })}>
+            {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <input type="number" step="0.01" placeholder="Price ($)" value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })} />
+          <input type="number" step="0.01" placeholder="Window Cleaning Price ($)" value={form.windowPrice}
+            onChange={(e) => setForm({ ...form, windowPrice: e.target.value })} />
+
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            Tracks &amp; Screens
+          </label>
+          <select value={form.tracksOption}
+            onChange={(e) => setForm({ ...form, tracksOption: e.target.value })}>
+            {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {form.tracksOption !== 'None' && (
+            <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={form.tracksPrice}
+              onChange={(e) => setForm({ ...form, tracksPrice: e.target.value })} />
+          )}
+
           <input type="date" value={form.scheduled_date}
             onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} />
           <textarea placeholder="Notes" value={form.notes}
