@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { buildQuoteMailto } from '../lib/quoteEmail'
 
 const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
 
@@ -63,6 +64,14 @@ export default function CustomerDetail() {
     loadData()
   }
 
+  function sendQuote(job) {
+    if (!customer.email) {
+      alert('This customer has no email on file. Add one to send a quote.')
+      return
+    }
+    window.location.href = buildQuoteMailto(customer, job)
+  }
+
   if (loading) return <p>Loading...</p>
   if (!customer) return <p>Customer not found.</p>
 
@@ -121,6 +130,7 @@ export default function CustomerDetail() {
                 {job.notes && <p className="card-notes">{job.notes}</p>}
               </div>
               <div className="card-actions">
+                <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
                 {nextStatus(job.status) && (
                   <button onClick={() => advanceStatus(job)}>
                     Mark {nextStatus(job.status)}

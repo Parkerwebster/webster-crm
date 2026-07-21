@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { buildQuoteMailto } from '../lib/quoteEmail'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -24,7 +25,7 @@ export default function Jobs() {
     setLoading(true)
     const { data } = await supabase
       .from('jobs')
-      .select('*, customers(id, name, address, phone)')
+      .select('*, customers(id, name, address, phone, email)')
       .order('scheduled_date', { ascending: true, nullsFirst: false })
     setJobs(data ?? [])
     setLoading(false)
@@ -39,6 +40,14 @@ export default function Jobs() {
     if (!next) return
     await supabase.from('jobs').update({ status: next, updated_at: new Date().toISOString() }).eq('id', job.id)
     loadJobs()
+  }
+
+  function sendQuote(job) {
+    if (!job.customers?.email) {
+      alert('This customer has no email on file. Add one to send a quote.')
+      return
+    }
+    window.location.href = buildQuoteMailto(job.customers, job)
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -86,6 +95,7 @@ export default function Jobs() {
                 {job.customers?.address && <span className="muted">{job.customers.address}</span>}
               </div>
               <div className="card-actions">
+                <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
                 {nextStatus(job.status) && (
                   <button onClick={() => advanceStatus(job)}>
                     Mark {nextStatus(job.status)}
