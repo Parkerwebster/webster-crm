@@ -1,0 +1,122 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
+
+export default function Leads() {
+  const [leads, setLeads] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', message: '' })
+  const [busyId, setBusyId] = useState(null)
+  const navigate = useNavigate()
+
+  async function loadLeads() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('converted', false)
+      .order('created_at', { ascending: false })
+    setLeads(data ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadLeads()
+  }, [])
+
+  async function handleAddLead(e) {
+    e.preventDefault()
+    await supabase.from('leads').insert([form])
+    setForm({ name: '', phone: '', email: '', address: '', message: '' })
+    setShowForm(false)
+    loadLeads()
+  }
+
+  async function convertToCustomer(lead) {
+    setBusyId(lead.id)
+    const { data: customer, error } = await supabase
+      .from('customers')
+      .insert([{
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        address: lead.address,
+        notes: lead.message,
+        source: 'Website / Lead',
+      }])
+      .select()
+      .single()
+
+    if (!error && customer) {
+      await supabase.from('leads').update({ converted: true }).eq('id', lead.id)
+      navigate(`/customers/${customer.id}`)
+    }
+    setBusyId(null)
+  }
+
+  async function dismissLead(lead) {
+    setBusyId(lead.id)
+    await supabase.from('leads').update({ converted: true }).eq('id', lead.id)
+    setBusyId(null)
+    loadLeads()
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1>Leads</h1>
+        <button onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'Cancel' : '+ Add Lead'}
+        </button>
+      </div>
+
+      {showForm && (
+        <form className="card form-grid" onSubmit={handleAddLead}>
+          <input placeholder="Name" required value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input placeholder="Phone" value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <input placeholder="Email" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input placeholder="Address" value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <textarea placeholder="Notes" value={form.message}
+            onChange={(e) => setForm({ ...form, message: e.target.value })} />
+          <button type="submit">Save Lead</button>
+        </form>
+      )}
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : leads.length === 0 ? (
+        <p className="empty-state">No open leads right now.</p>
+      ) : (
+        <div className="card-list">
+          {leads.map((lead) => (
+            <div className="card" key={lead.id}>
+              <div className="card-main">
+                <strong>{lead.name}</strong>
+                <span>{lead.phone}</span>
+                <span>{lead.email}</span>
+                <span>{lead.address}</span>
+                {lead.message && <p className="card-notes">{lead.message}</p>}
+                <span className="card-date">
+                  {new Date(lead.created_at).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="card-actions">
+                <button disabled={busyId === lead.id} onClick={() => convertToCustomer(lead)}>
+                  Convert to Customer
+                </button>
+                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => dismissLead(lead)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
