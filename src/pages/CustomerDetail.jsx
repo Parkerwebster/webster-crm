@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { buildQuoteMailto } from '../lib/quoteEmail'
+import { buildQuoteEmail } from '../lib/quoteEmail'
+import QuoteEmailModal from '../components/QuoteEmailModal'
 
 const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
 
@@ -16,6 +17,7 @@ export default function CustomerDetail() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [quoteEmail, setQuoteEmail] = useState(null)
   const [form, setForm] = useState({
     service_type: 'Window Cleaning',
     price: '',
@@ -65,11 +67,7 @@ export default function CustomerDetail() {
   }
 
   function sendQuote(job) {
-    if (!customer.email) {
-      alert('This customer has no email on file. Add one to send a quote.')
-      return
-    }
-    window.location.href = buildQuoteMailto(customer, job)
+    setQuoteEmail(buildQuoteEmail(customer, job))
   }
 
   if (loading) return <p>Loading...</p>
@@ -141,6 +139,10 @@ export default function CustomerDetail() {
             </div>
           ))}
         </div>
+      )}
+
+      {quoteEmail && (
+        <QuoteEmailModal email={quoteEmail} onClose={() => setQuoteEmail(null)} />
       )}
     </div>
   )

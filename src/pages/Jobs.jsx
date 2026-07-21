@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { buildQuoteMailto } from '../lib/quoteEmail'
+import { buildQuoteEmail } from '../lib/quoteEmail'
+import QuoteEmailModal from '../components/QuoteEmailModal'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -20,6 +21,7 @@ export default function Jobs() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('upcoming')
+  const [quoteEmail, setQuoteEmail] = useState(null)
 
   async function loadJobs() {
     setLoading(true)
@@ -43,11 +45,7 @@ export default function Jobs() {
   }
 
   function sendQuote(job) {
-    if (!job.customers?.email) {
-      alert('This customer has no email on file. Add one to send a quote.')
-      return
-    }
-    window.location.href = buildQuoteMailto(job.customers, job)
+    setQuoteEmail(buildQuoteEmail(job.customers ?? {}, job))
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -105,6 +103,10 @@ export default function Jobs() {
             </div>
           ))}
         </div>
+      )}
+
+      {quoteEmail && (
+        <QuoteEmailModal email={quoteEmail} onClose={() => setQuoteEmail(null)} />
       )}
     </div>
   )

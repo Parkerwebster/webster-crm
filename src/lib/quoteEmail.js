@@ -1,7 +1,7 @@
 const BUSINESS_NAME = 'Webster Exterior Cleaning'
 const BUSINESS_PHONE = '(972) 583-6818'
 
-export function buildQuoteMailto(customer, job) {
+export function buildQuoteEmail(customer, job) {
   const subject = `Your Quote from ${BUSINESS_NAME}`
 
   const lines = [
@@ -26,8 +26,13 @@ export function buildQuoteMailto(customer, job) {
     BUSINESS_PHONE,
   )
 
-  const body = lines.join('\n')
-  const to = encodeURIComponent(customer.email || '')
+  return {
+    to: customer.email || '',
+    subject,
+    body: lines.join('\n'),
+  }
+}
 
-  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+export function buildQuoteMailto({ to, subject, body }) {
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
