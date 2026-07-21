@@ -13,6 +13,7 @@ export default function Layout() {
           <NavLink to="/leads">Leads</NavLink>
           <NavLink to="/customers">Customers</NavLink>
           <NavLink to="/jobs">Jobs</NavLink>
+          <NavLink to="/account">Account</NavLink>
         </nav>
         <div className="sidebar-footer">
           <span className="sidebar-user">{user?.email}</span>
