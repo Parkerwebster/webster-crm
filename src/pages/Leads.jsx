@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { buildQuoteEmail } from '../lib/quoteEmail'
+import QuoteEmailModal from '../components/QuoteEmailModal'
+
+const WINDOW_TYPES = [
+  'Window Cleaning (Exterior Only)',
+  'Window Cleaning (Interior and Exterior)',
+]
+
+const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
+
+const EMPTY_QUOTE = {
+  windowType: WINDOW_TYPES[0],
+  windowPrice: '',
+  tracksOption: TRACKS_OPTIONS[0],
+  tracksPrice: '',
+  scheduled_date: '',
+  notes: '',
+}
 
 export default function Leads() {
   const [leads, setLeads] = useState([])
@@ -8,6 +26,9 @@ export default function Leads() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', message: '' })
   const [busyId, setBusyId] = useState(null)
+  const [quoteLeadId, setQuoteLeadId] = useState(null)
+  const [quoteForm, setQuoteForm] = useState(EMPTY_QUOTE)
+  const [quoteEmail, setQuoteEmail] = useState(null)
   const navigate = useNavigate()
 
   async function loadLeads() {
@@ -62,6 +83,62 @@ export default function Leads() {
     loadLeads()
   }
 
+  function openQuoteForm(lead) {
+    setQuoteLeadId(lead.id)
+    setQuoteForm(EMPTY_QUOTE)
+  }
+
+  async function handleCreateQuote(e, lead) {
+    e.preventDefault()
+    setBusyId(lead.id)
+
+    const hasTracks = quoteForm.tracksOption !== 'None'
+    const serviceType = hasTracks ? `${quoteForm.windowType} + ${quoteForm.tracksOption}` : quoteForm.windowType
+    const total = (quoteForm.windowPrice ? Number(quoteForm.windowPrice) : 0)
+      + (hasTracks && quoteForm.tracksPrice ? Number(quoteForm.tracksPrice) : 0)
+
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .insert([{
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        address: lead.address,
+        notes: lead.message,
+        source: 'Website / Lead',
+      }])
+      .select()
+      .single()
+
+    if (customerError || !customer) {
+      setBusyId(null)
+      return
+    }
+
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .insert([{
+        customer_id: customer.id,
+        service_type: serviceType,
+        price: total > 0 ? total : null,
+        scheduled_date: quoteForm.scheduled_date || null,
+        notes: quoteForm.notes,
+      }])
+      .select()
+      .single()
+
+    await supabase.from('leads').update({ converted: true }).eq('id', lead.id)
+
+    setBusyId(null)
+    setQuoteLeadId(null)
+
+    if (!jobError && job) {
+      setQuoteEmail(buildQuoteEmail(customer, job))
+    }
+
+    loadLeads()
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -106,16 +183,59 @@ export default function Leads() {
                 </span>
               </div>
               <div className="card-actions">
-                <button disabled={busyId === lead.id} onClick={() => convertToCustomer(lead)}>
+                <button disabled={busyId === lead.id} onClick={() => openQuoteForm(lead)}>
+                  Create Quote
+                </button>
+                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => convertToCustomer(lead)}>
                   Convert to Customer
                 </button>
                 <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => dismissLead(lead)}>
                   Dismiss
                 </button>
               </div>
+
+              {quoteLeadId === lead.id && (
+                <form className="form-grid" style={{ marginTop: 16 }} onSubmit={(e) => handleCreateQuote(e, lead)}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Window Cleaning
+                  </label>
+                  <select value={quoteForm.windowType}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, windowType: e.target.value })}>
+                    {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input type="number" step="0.01" placeholder="Window Cleaning Price ($)" value={quoteForm.windowPrice}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, windowPrice: e.target.value })} />
+
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Tracks &amp; Screens
+                  </label>
+                  <select value={quoteForm.tracksOption}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, tracksOption: e.target.value })}>
+                    {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  {quoteForm.tracksOption !== 'None' && (
+                    <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={quoteForm.tracksPrice}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, tracksPrice: e.target.value })} />
+                  )}
+
+                  <input type="date" value={quoteForm.scheduled_date}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, scheduled_date: e.target.value })} />
+                  <textarea placeholder="Notes" value={quoteForm.notes}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, notes: e.target.value })} />
+
+                  <div className="card-actions">
+                    <button type="submit" disabled={busyId === lead.id}>Create &amp; Send Quote</button>
+                    <button type="button" className="btn-secondary" onClick={() => setQuoteLeadId(null)}>Cancel</button>
+                  </div>
+                </form>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {quoteEmail && (
+        <QuoteEmailModal email={quoteEmail} onClose={() => setQuoteEmail(null)} />
       )}
     </div>
   )
