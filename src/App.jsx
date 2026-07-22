@@ -7,6 +7,7 @@ import Leads from './pages/Leads'
 import Customers from './pages/Customers'
 import CustomerDetail from './pages/CustomerDetail'
 import Jobs from './pages/Jobs'
+import Calendar from './pages/Calendar'
 import Account from './pages/Account'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="customers" element={<Customers />} />
         <Route path="customers/:id" element={<CustomerDetail />} />
         <Route path="jobs" element={<Jobs />} />
+        <Route path="calendar" element={<Calendar />} />
         <Route path="account" element={<Account />} />
       </Route>
     </Routes>

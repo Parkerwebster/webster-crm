@@ -284,6 +284,76 @@ a { color: var(--blue-700); }
 
 .link { font-size: 0.9rem; font-weight: 600; text-decoration: none; }
 
+/* Calendar */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.calendar-day-label {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+}
+.calendar-day {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 100px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calendar-day-muted { background: var(--blue-50); color: var(--ink-soft); opacity: 0.6; }
+.calendar-day-today { border-color: var(--blue-600); border-width: 2px; }
+.calendar-day-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--blue-900);
+}
+.calendar-add-btn {
+  background: none;
+  color: var(--blue-600);
+  padding: 0 6px;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 4px;
+}
+.calendar-add-btn:hover { background: var(--blue-100); }
+.calendar-day-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+.calendar-job-chip {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+.calendar-job-chip.status-completed { background: #e8f6ec; color: var(--green); }
+.calendar-job-chip.status-invoiced { background: #fdf3e0; color: var(--amber); }
+.calendar-job-chip.status-paid { background: #e5f7ea; color: var(--green); }
+
+@media (max-width: 800px) {
+  .calendar-day { min-height: 70px; font-size: 0.8rem; }
+  .calendar-day-label { font-size: 0.7rem; }
+}
+
 /* Quote email modal */
 .modal-overlay {
   position: fixed;
