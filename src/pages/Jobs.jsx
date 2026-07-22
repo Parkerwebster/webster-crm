@@ -89,7 +89,10 @@ export default function Jobs() {
                 <span className={`status-badge status-${job.status}`}>{job.status}</span>
                 <span>{job.service_type}</span>
                 {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
-                {job.scheduled_date && <span>{job.scheduled_date}</span>}
+                {job.scheduled_date && <span>Scheduled: {job.scheduled_date}</span>}
+                <span className="muted">
+                  Quoted {new Date(job.created_at).toLocaleDateString()}
+                </span>
                 {job.customers?.address && <span className="muted">{job.customers.address}</span>}
               </div>
               <div className="card-actions">

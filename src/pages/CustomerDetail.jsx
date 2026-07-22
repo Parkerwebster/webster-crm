@@ -160,7 +160,10 @@ export default function CustomerDetail() {
                 <strong>{job.service_type}</strong>
                 <span className={`status-badge status-${job.status}`}>{job.status}</span>
                 {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
-                {job.scheduled_date && <span>{job.scheduled_date}</span>}
+                {job.scheduled_date && <span>Scheduled: {job.scheduled_date}</span>}
+                <span className="muted">
+                  Quoted {new Date(job.created_at).toLocaleDateString()}
+                </span>
                 {job.notes && <p className="card-notes">{job.notes}</p>}
               </div>
               <div className="card-actions">
