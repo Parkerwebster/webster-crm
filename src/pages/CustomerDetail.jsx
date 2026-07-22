@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
+import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 
 const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
@@ -32,6 +33,8 @@ export default function CustomerDetail() {
     tracksOption: TRACKS_OPTIONS[0],
     tracksPrice: '',
     scheduled_date: '',
+    startTime: '',
+    endTime: '',
     notes: '',
   })
 
@@ -63,6 +66,8 @@ export default function CustomerDetail() {
       service_type: serviceType,
       price: total > 0 ? total : null,
       scheduled_date: form.scheduled_date || null,
+      start_time: form.startTime || null,
+      end_time: form.endTime || null,
       notes: form.notes,
     }])
     setForm({
@@ -71,6 +76,8 @@ export default function CustomerDetail() {
       tracksOption: TRACKS_OPTIONS[0],
       tracksPrice: '',
       scheduled_date: '',
+      startTime: '',
+      endTime: '',
       notes: '',
     })
     setShowForm(false)
@@ -168,6 +175,20 @@ export default function CustomerDetail() {
 
           <input type="date" value={form.scheduled_date}
             onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} />
+
+          <div className="form-row">
+            <div className="form-field">
+              <label htmlFor="job-start-time">Start Time</label>
+              <input id="job-start-time" type="time" value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="job-end-time">End Time</label>
+              <input id="job-end-time" type="time" value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+            </div>
+          </div>
+
           <textarea placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <button type="submit">Save Job</button>
@@ -184,7 +205,12 @@ export default function CustomerDetail() {
                 <strong>{job.service_type}</strong>
                 <span className={`status-badge status-${job.status}`}>{job.status}</span>
                 {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
-                {job.scheduled_date && <span>Scheduled: {job.scheduled_date}</span>}
+                {job.scheduled_date && (
+                  <span>
+                    Scheduled: {job.scheduled_date}
+                    {job.start_time && ` · ${formatTimeRange(job.start_time, job.end_time)}`}
+                  </span>
+                )}
                 <span className="muted">
                   Quoted {new Date(job.created_at).toLocaleDateString()}
                 </span>

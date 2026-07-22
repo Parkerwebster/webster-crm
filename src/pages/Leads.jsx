@@ -17,6 +17,8 @@ const EMPTY_QUOTE = {
   tracksOption: TRACKS_OPTIONS[0],
   tracksPrice: '',
   scheduled_date: '',
+  startTime: '',
+  endTime: '',
   notes: '',
 }
 
@@ -130,6 +132,8 @@ export default function Leads() {
         service_type: serviceType,
         price: total > 0 ? total : null,
         scheduled_date: quoteForm.scheduled_date || null,
+        start_time: quoteForm.startTime || null,
+        end_time: quoteForm.endTime || null,
         notes: quoteForm.notes,
       }])
       .select()
@@ -231,6 +235,20 @@ export default function Leads() {
 
                   <input type="date" value={quoteForm.scheduled_date}
                     onChange={(e) => setQuoteForm({ ...quoteForm, scheduled_date: e.target.value })} />
+
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label htmlFor={`start-${lead.id}`}>Start Time</label>
+                      <input id={`start-${lead.id}`} type="time" value={quoteForm.startTime}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, startTime: e.target.value })} />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor={`end-${lead.id}`}>End Time</label>
+                      <input id={`end-${lead.id}`} type="time" value={quoteForm.endTime}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, endTime: e.target.value })} />
+                    </div>
+                  </div>
+
                   <textarea placeholder="Notes" value={quoteForm.notes}
                     onChange={(e) => setQuoteForm({ ...quoteForm, notes: e.target.value })} />
 

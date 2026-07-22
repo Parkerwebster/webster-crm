@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
+import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 
 const FILTERS = [
@@ -89,7 +90,12 @@ export default function Jobs() {
                 <span className={`status-badge status-${job.status}`}>{job.status}</span>
                 <span>{job.service_type}</span>
                 {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
-                {job.scheduled_date && <span>Scheduled: {job.scheduled_date}</span>}
+                {job.scheduled_date && (
+                  <span>
+                    Scheduled: {job.scheduled_date}
+                    {job.start_time && ` · ${formatTimeRange(job.start_time, job.end_time)}`}
+                  </span>
+                )}
                 <span className="muted">
                   Quoted {new Date(job.created_at).toLocaleDateString()}
                 </span>

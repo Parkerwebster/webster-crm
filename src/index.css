@@ -348,6 +348,7 @@ a { color: var(--blue-700); }
 .calendar-job-chip.status-completed { background: #e8f6ec; color: var(--green); }
 .calendar-job-chip.status-invoiced { background: #fdf3e0; color: var(--amber); }
 .calendar-job-chip.status-paid { background: #e5f7ea; color: var(--green); }
+.calendar-job-chip-time { font-weight: 700; }
 
 @media (max-width: 800px) {
   .calendar-day { min-height: 70px; font-size: 0.8rem; }

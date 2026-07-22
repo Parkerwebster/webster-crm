@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { formatTime, formatTimeRange } from '../lib/format'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -17,6 +18,8 @@ const EMPTY_SCHEDULE_FORM = {
   windowPrice: '',
   tracksOption: TRACKS_OPTIONS[0],
   tracksPrice: '',
+  startTime: '',
+  endTime: '',
   notes: '',
 }
 
@@ -139,6 +142,8 @@ export default function Calendar() {
       service_type: serviceType,
       price: total > 0 ? total : null,
       scheduled_date: toDateKey(scheduleDate),
+      start_time: form.startTime || null,
+      end_time: form.endTime || null,
       notes: form.notes,
       status: 'scheduled',
     }])
@@ -190,9 +195,10 @@ export default function Calendar() {
                       to={`/customers/${job.customers?.id}`}
                       key={job.id}
                       className={`calendar-job-chip status-${job.status}`}
-                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}`}
+                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.start_time ? ` — ${formatTimeRange(job.start_time, job.end_time)}` : ''}`}
                     >
-                      {job.customers?.name ?? 'Unknown'}
+                      {job.start_time && <span className="calendar-job-chip-time">{formatTime(job.start_time)}</span>}
+                      {' '}{job.customers?.name ?? 'Unknown'}
                     </Link>
                   ))}
                 </div>
@@ -275,6 +281,22 @@ export default function Calendar() {
                 <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={form.tracksPrice}
                   onChange={(e) => setForm({ ...form, tracksPrice: e.target.value })} />
               )}
+
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Time (optional)
+              </label>
+              <div className="form-row">
+                <div className="form-field">
+                  <label htmlFor="cal-start-time">Start</label>
+                  <input id="cal-start-time" type="time" value={form.startTime}
+                    onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="cal-end-time">End</label>
+                  <input id="cal-end-time" type="time" value={form.endTime}
+                    onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+                </div>
+              </div>
 
               <textarea placeholder="Notes" value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })} />
