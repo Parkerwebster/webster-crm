@@ -83,6 +83,14 @@ export default function Leads() {
     loadLeads()
   }
 
+  async function deleteLead(lead) {
+    if (!window.confirm(`Delete the lead "${lead.name}"? This can't be undone.`)) return
+    setBusyId(lead.id)
+    await supabase.from('leads').delete().eq('id', lead.id)
+    setBusyId(null)
+    loadLeads()
+  }
+
   function openQuoteForm(lead) {
     setQuoteLeadId(lead.id)
     setQuoteForm(EMPTY_QUOTE)
@@ -191,6 +199,9 @@ export default function Leads() {
                 </button>
                 <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => dismissLead(lead)}>
                   Dismiss
+                </button>
+                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => deleteLead(lead)}>
+                  Delete
                 </button>
               </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
 import QuoteEmailModal from '../components/QuoteEmailModal'
@@ -20,6 +20,7 @@ function nextStatus(status) {
 
 export default function CustomerDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -92,6 +93,25 @@ export default function CustomerDetail() {
     setQuoteEmail(buildQuoteEmail(customer, job))
   }
 
+  async function deleteCustomer() {
+    if (!window.confirm(`Delete "${customer.name}" and all their jobs/quotes? This can't be undone.`)) return
+    await supabase.from('customers').delete().eq('id', id)
+    navigate('/customers')
+  }
+
+  async function convertToLead() {
+    if (!window.confirm(`Move "${customer.name}" back to Leads? This deletes their customer record and job/quote history.`)) return
+    await supabase.from('leads').insert([{
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      address: customer.address,
+      message: customer.notes,
+    }])
+    await supabase.from('customers').delete().eq('id', id)
+    navigate('/leads')
+  }
+
   if (loading) return <p>Loading...</p>
   if (!customer) return <p>Customer not found.</p>
 
@@ -101,6 +121,10 @@ export default function CustomerDetail() {
 
       <div className="page-header">
         <h1>{customer.name}</h1>
+        <div className="card-actions">
+          <button className="btn-secondary" onClick={convertToLead}>Convert to Lead</button>
+          <button className="btn-secondary" onClick={deleteCustomer}>Delete Customer</button>
+        </div>
       </div>
 
       <div className="card customer-info">
