@@ -388,7 +388,7 @@ a { color: var(--blue-700); }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 100;
+  z-index: 2000;
 }
 .modal-card {
   background: var(--white);
@@ -409,6 +409,34 @@ a { color: var(--blue-700); }
   flex: 1;
 }
 .copy-row-textarea { align-items: flex-start; }
+
+/* Door Knocking Map */
+.map-hint { color: var(--ink-soft); font-size: 0.85rem; margin: 0 0 12px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
+.map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ink-soft); }
+.map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.map-wrap {
+  height: 65vh;
+  min-height: 420px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.map-popup-form { display: flex; flex-direction: column; gap: 8px; min-width: 200px; }
+.map-popup-form select, .map-popup-form input, .map-popup-form textarea { font-size: 0.85rem; padding: 6px 8px; }
+.map-popup-form textarea { min-height: 50px; resize: vertical; }
+.map-popup-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.map-popup-actions button { padding: 6px 10px; font-size: 0.8rem; }
+
+@media (max-width: 800px) {
+  .map-wrap { height: 60vh; }
+}
 
 @media (max-width: 800px) {
   .app-shell { flex-direction: column; }
