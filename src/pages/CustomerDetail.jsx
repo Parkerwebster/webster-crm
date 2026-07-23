@@ -75,6 +75,7 @@ export default function CustomerDetail() {
   const [editForm, setEditForm] = useState(null)
   const [editingInfo, setEditingInfo] = useState(false)
   const [infoForm, setInfoForm] = useState(null)
+  const [sendingInvoiceId, setSendingInvoiceId] = useState(null)
 
   async function loadData() {
     setLoading(true)
@@ -174,6 +175,44 @@ export default function CustomerDetail() {
 
   function sendQuote(job) {
     setQuoteEmail(buildQuoteEmail(customer, job))
+  }
+
+  async function sendInvoice(job) {
+    if (!customer.email) {
+      alert('This customer has no email on file. Add one before sending an invoice.')
+      return
+    }
+    if (!job.price) {
+      alert('This job has no price set. Add a price before sending an invoice.')
+      return
+    }
+    setSendingInvoiceId(job.id)
+    const { data, error } = await supabase.functions.invoke('send-invoice', {
+      body: {
+        job_id: job.id,
+        customer_name: customer.name,
+        customer_email: customer.email,
+        service_type: job.service_type,
+        price: job.price,
+        existing_payment_link_url: job.stripe_payment_link_url,
+        existing_payment_link_id: job.stripe_payment_link_id,
+      },
+    })
+    setSendingInvoiceId(null)
+    if (error || !data?.ok) {
+      alert('Failed to send invoice. Check that the job has a price and the customer has an email, then try again.')
+      return
+    }
+    await supabase.from('jobs').update({
+      stripe_payment_link_id: data.payment_link_id,
+      stripe_payment_link_url: data.payment_link_url,
+    }).eq('id', job.id)
+    loadData()
+  }
+
+  function copyPaymentLink(job) {
+    navigator.clipboard.writeText(job.stripe_payment_link_url)
+    alert('Payment link copied!')
   }
 
   async function deleteCustomer() {
@@ -400,6 +439,20 @@ export default function CustomerDetail() {
                   <div className="card-actions">
                     <button className="btn-secondary" onClick={() => startEdit(job)}>Edit</button>
                     <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
+                    {job.price != null && (
+                      job.stripe_payment_link_url ? (
+                        <>
+                          <button className="btn-secondary" disabled={sendingInvoiceId === job.id} onClick={() => sendInvoice(job)}>
+                            {sendingInvoiceId === job.id ? 'Sending...' : 'Resend Invoice'}
+                          </button>
+                          <button className="btn-secondary" onClick={() => copyPaymentLink(job)}>Copy Payment Link</button>
+                        </>
+                      ) : (
+                        <button disabled={sendingInvoiceId === job.id} onClick={() => sendInvoice(job)}>
+                          {sendingInvoiceId === job.id ? 'Sending...' : 'Send Invoice'}
+                        </button>
+                      )
+                    )}
                     {nextStatus(job.status) && (
                       <button onClick={() => advanceStatus(job)}>
                         Mark {nextStatus(job.status)}
