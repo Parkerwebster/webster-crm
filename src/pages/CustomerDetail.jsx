@@ -14,9 +14,39 @@ const WINDOW_TYPES = [
 
 const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
 
+const EMPTY_JOB_FORM = {
+  windowType: WINDOW_TYPES[0],
+  windowPrice: '',
+  tracksOption: TRACKS_OPTIONS[0],
+  tracksPrice: '',
+  scheduled_date: '',
+  startTime: '',
+  endTime: '',
+  notes: '',
+}
+
 function nextStatus(status) {
   const idx = STATUS_FLOW.indexOf(status)
   return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null
+}
+
+function parseServiceType(serviceType) {
+  const windowType = WINDOW_TYPES.find((t) => serviceType?.startsWith(t)) || WINDOW_TYPES[0]
+  const tracksOption = TRACKS_OPTIONS.find((t) => t !== 'None' && serviceType?.includes(t)) || 'None'
+  return { windowType, tracksOption }
+}
+
+function jobToEditForm(job) {
+  const { windowType, tracksOption } = parseServiceType(job.service_type)
+  return {
+    windowType,
+    tracksOption,
+    price: job.price != null ? String(job.price) : '',
+    scheduled_date: job.scheduled_date || '',
+    startTime: job.start_time ? job.start_time.slice(0, 5) : '',
+    endTime: job.end_time ? job.end_time.slice(0, 5) : '',
+    notes: job.notes || '',
+  }
 }
 
 export default function CustomerDetail() {
@@ -27,16 +57,9 @@ export default function CustomerDetail() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [quoteEmail, setQuoteEmail] = useState(null)
-  const [form, setForm] = useState({
-    windowType: WINDOW_TYPES[0],
-    windowPrice: '',
-    tracksOption: TRACKS_OPTIONS[0],
-    tracksPrice: '',
-    scheduled_date: '',
-    startTime: '',
-    endTime: '',
-    notes: '',
-  })
+  const [form, setForm] = useState(EMPTY_JOB_FORM)
+  const [editingJobId, setEditingJobId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
 
   async function loadData() {
     setLoading(true)
@@ -70,17 +93,34 @@ export default function CustomerDetail() {
       end_time: form.endTime || null,
       notes: form.notes,
     }])
-    setForm({
-      windowType: WINDOW_TYPES[0],
-      windowPrice: '',
-      tracksOption: TRACKS_OPTIONS[0],
-      tracksPrice: '',
-      scheduled_date: '',
-      startTime: '',
-      endTime: '',
-      notes: '',
-    })
+    setForm(EMPTY_JOB_FORM)
     setShowForm(false)
+    loadData()
+  }
+
+  function startEdit(job) {
+    setEditingJobId(job.id)
+    setEditForm(jobToEditForm(job))
+  }
+
+  async function handleUpdateJob(e, job) {
+    e.preventDefault()
+
+    const hasTracks = editForm.tracksOption !== 'None'
+    const serviceType = hasTracks ? `${editForm.windowType} + ${editForm.tracksOption}` : editForm.windowType
+
+    await supabase.from('jobs').update({
+      service_type: serviceType,
+      price: editForm.price ? Number(editForm.price) : null,
+      scheduled_date: editForm.scheduled_date || null,
+      start_time: editForm.startTime || null,
+      end_time: editForm.endTime || null,
+      notes: editForm.notes,
+      updated_at: new Date().toISOString(),
+    }).eq('id', job.id)
+
+    setEditingJobId(null)
+    setEditForm(null)
     loadData()
   }
 
@@ -92,6 +132,7 @@ export default function CustomerDetail() {
   }
 
   async function deleteJob(job) {
+    if (!window.confirm('Delete this quote/job? This can\'t be undone.')) return
     await supabase.from('jobs').delete().eq('id', job.id)
     loadData()
   }
@@ -134,17 +175,34 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      <div className="card customer-info">
-        <div><strong>Phone:</strong> {customer.phone || '—'}</div>
-        <div><strong>Email:</strong> {customer.email || '—'}</div>
-        <div><strong>Address:</strong> {customer.address || '—'}</div>
-        <div><strong>Source:</strong> {customer.source || '—'}</div>
-        {customer.notes && <div><strong>Notes:</strong> {customer.notes}</div>}
+      <div className="card customer-info-grid">
+        <div className="customer-info-item">
+          <span className="customer-info-label">Phone</span>
+          <span>{customer.phone || '—'}</span>
+        </div>
+        <div className="customer-info-item">
+          <span className="customer-info-label">Email</span>
+          <span>{customer.email || '—'}</span>
+        </div>
+        <div className="customer-info-item">
+          <span className="customer-info-label">Address</span>
+          <span>{customer.address || '—'}</span>
+        </div>
+        <div className="customer-info-item">
+          <span className="customer-info-label">Source</span>
+          <span>{customer.source || '—'}</span>
+        </div>
+        {customer.notes && (
+          <div className="customer-info-item customer-info-notes">
+            <span className="customer-info-label">Notes</span>
+            <span>{customer.notes}</span>
+          </div>
+        )}
       </div>
 
       <div className="page-header">
         <h2>Jobs</h2>
-        <button onClick={() => setShowForm((v) => !v)}>
+        <button onClick={() => { setShowForm((v) => !v); setForm(EMPTY_JOB_FORM) }}>
           {showForm ? 'Cancel' : '+ Add Job'}
         </button>
       </div>
@@ -201,30 +259,83 @@ export default function CustomerDetail() {
         <div className="card-list">
           {jobs.map((job) => (
             <div className="card" key={job.id}>
-              <div className="card-main">
-                <strong>{job.service_type}</strong>
-                <span className={`status-badge status-${job.status}`}>{job.status}</span>
-                {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
-                {job.scheduled_date && (
-                  <span>
-                    Scheduled: {job.scheduled_date}
-                    {job.start_time && ` · ${formatTimeRange(job.start_time, job.end_time)}`}
-                  </span>
-                )}
-                <span className="muted">
-                  Quoted {new Date(job.created_at).toLocaleDateString()}
-                </span>
-                {job.notes && <p className="card-notes">{job.notes}</p>}
-              </div>
-              <div className="card-actions">
-                <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
-                {nextStatus(job.status) && (
-                  <button onClick={() => advanceStatus(job)}>
-                    Mark {nextStatus(job.status)}
-                  </button>
-                )}
-                <button className="btn-secondary" onClick={() => deleteJob(job)}>Delete</button>
-              </div>
+              {editingJobId === job.id ? (
+                <form className="form-grid" style={{ marginBottom: 0 }} onSubmit={(e) => handleUpdateJob(e, job)}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Window Cleaning
+                  </label>
+                  <select value={editForm.windowType}
+                    onChange={(e) => setEditForm({ ...editForm, windowType: e.target.value })}>
+                    {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Tracks &amp; Screens
+                  </label>
+                  <select value={editForm.tracksOption}
+                    onChange={(e) => setEditForm({ ...editForm, tracksOption: e.target.value })}>
+                    {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+
+                  <label htmlFor={`price-${job.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Total Price ($)
+                  </label>
+                  <input id={`price-${job.id}`} type="number" step="0.01" placeholder="Total Price ($)" value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+
+                  <input type="date" value={editForm.scheduled_date}
+                    onChange={(e) => setEditForm({ ...editForm, scheduled_date: e.target.value })} />
+
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label htmlFor={`edit-start-${job.id}`}>Start Time</label>
+                      <input id={`edit-start-${job.id}`} type="time" value={editForm.startTime}
+                        onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })} />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor={`edit-end-${job.id}`}>End Time</label>
+                      <input id={`edit-end-${job.id}`} type="time" value={editForm.endTime}
+                        onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <textarea placeholder="Notes" value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+
+                  <div className="card-actions">
+                    <button type="submit">Save Changes</button>
+                    <button type="button" className="btn-secondary" onClick={() => setEditingJobId(null)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="card-main">
+                    <strong>{job.service_type}</strong>
+                    <span className={`status-badge status-${job.status}`}>{job.status}</span>
+                    {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
+                    {job.scheduled_date && (
+                      <span>
+                        Scheduled: {job.scheduled_date}
+                        {job.start_time && ` · ${formatTimeRange(job.start_time, job.end_time)}`}
+                      </span>
+                    )}
+                    <span className="muted">
+                      Quoted {new Date(job.created_at).toLocaleDateString()}
+                    </span>
+                    {job.notes && <p className="card-notes">{job.notes}</p>}
+                  </div>
+                  <div className="card-actions">
+                    <button className="btn-secondary" onClick={() => startEdit(job)}>Edit</button>
+                    <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
+                    {nextStatus(job.status) && (
+                      <button onClick={() => advanceStatus(job)}>
+                        Mark {nextStatus(job.status)}
+                      </button>
+                    )}
+                    <button className="btn-secondary" onClick={() => deleteJob(job)}>Delete</button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -201,6 +201,30 @@ a { color: var(--blue-700); }
   margin-bottom: 8px;
 }
 
+.customer-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 32px;
+  margin-bottom: 24px;
+}
+.customer-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.customer-info-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+.customer-info-notes { grid-column: 1 / -1; }
+
+@media (max-width: 600px) {
+  .customer-info-grid { grid-template-columns: 1fr; }
+}
+
 /* Status badges */
 .status-badge {
   text-transform: capitalize;
