@@ -207,6 +207,7 @@ export default function CustomerDetail() {
       <div className="page-header">
         <h1>{customer.name}</h1>
         <div className="card-actions">
+          <button onClick={startEditInfo}>Edit Customer Details</button>
           <button className="btn-secondary" onClick={convertToLead}>Convert to Lead</button>
           <button className="btn-secondary" onClick={deleteCustomer}>Delete Customer</button>
         </div>
@@ -269,9 +270,6 @@ export default function CustomerDetail() {
               <span>{customer.notes}</span>
             </div>
           )}
-          <div className="customer-info-item">
-            <button className="btn-secondary" onClick={startEditInfo}>Edit Info</button>
-          </div>
         </div>
       )}
 
