@@ -5,8 +5,9 @@ import { supabase } from '../lib/supabaseClient'
 
 const STATUS_OPTIONS = [
   { value: 'knocked', label: 'Knocked', color: '#1e88c7' },
-  { value: 'no_answer', label: 'No Answer', color: '#b7791f' },
+  { value: 'no_answer', label: 'No Answer', color: '#8e44ad' },
   { value: 'not_interested', label: 'Not Interested', color: '#c0392b' },
+  { value: 'no_soliciting', label: 'No Soliciting', color: '#e67e22' },
   { value: 'lead', label: 'Interested / Lead', color: '#f2c40f' },
   { value: 'customer', label: 'Became Customer', color: '#1e8e3e' },
 ]
