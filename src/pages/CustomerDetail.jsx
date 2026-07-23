@@ -14,6 +14,8 @@ const WINDOW_TYPES = [
 
 const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
 
+const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
+
 const EMPTY_JOB_FORM = {
   windowType: WINDOW_TYPES[0],
   windowPrice: '',
@@ -34,6 +36,17 @@ function parseServiceType(serviceType) {
   const windowType = WINDOW_TYPES.find((t) => serviceType?.startsWith(t)) || WINDOW_TYPES[0]
   const tracksOption = TRACKS_OPTIONS.find((t) => t !== 'None' && serviceType?.includes(t)) || 'None'
   return { windowType, tracksOption }
+}
+
+function customerToInfoForm(customer) {
+  return {
+    phone: customer.phone || '',
+    email: customer.email || '',
+    address: customer.address || '',
+    source: customer.source || '',
+    referral_name: customer.referral_name || '',
+    notes: customer.notes || '',
+  }
 }
 
 function jobToEditForm(job) {
@@ -60,6 +73,8 @@ export default function CustomerDetail() {
   const [form, setForm] = useState(EMPTY_JOB_FORM)
   const [editingJobId, setEditingJobId] = useState(null)
   const [editForm, setEditForm] = useState(null)
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoForm, setInfoForm] = useState(null)
 
   async function loadData() {
     setLoading(true)
@@ -95,6 +110,26 @@ export default function CustomerDetail() {
     }])
     setForm(EMPTY_JOB_FORM)
     setShowForm(false)
+    loadData()
+  }
+
+  function startEditInfo() {
+    setInfoForm(customerToInfoForm(customer))
+    setEditingInfo(true)
+  }
+
+  async function handleUpdateInfo(e) {
+    e.preventDefault()
+    await supabase.from('customers').update({
+      phone: infoForm.phone,
+      email: infoForm.email,
+      address: infoForm.address,
+      source: infoForm.source,
+      referral_name: infoForm.source === 'Referral' ? infoForm.referral_name : null,
+      notes: infoForm.notes,
+    }).eq('id', id)
+    setEditingInfo(false)
+    setInfoForm(null)
     loadData()
   }
 
@@ -155,6 +190,8 @@ export default function CustomerDetail() {
       email: customer.email,
       address: customer.address,
       message: customer.notes,
+      source: customer.source,
+      referral_name: customer.referral_name,
     }])
     await supabase.from('customers').delete().eq('id', id)
     navigate('/leads')
@@ -175,30 +212,68 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      <div className="card customer-info-grid">
-        <div className="customer-info-item">
-          <span className="customer-info-label">Phone</span>
-          <span>{customer.phone || '—'}</span>
-        </div>
-        <div className="customer-info-item">
-          <span className="customer-info-label">Email</span>
-          <span>{customer.email || '—'}</span>
-        </div>
-        <div className="customer-info-item">
-          <span className="customer-info-label">Address</span>
-          <span>{customer.address || '—'}</span>
-        </div>
-        <div className="customer-info-item">
-          <span className="customer-info-label">Source</span>
-          <span>{customer.source || '—'}</span>
-        </div>
-        {customer.notes && (
-          <div className="customer-info-item customer-info-notes">
-            <span className="customer-info-label">Notes</span>
-            <span>{customer.notes}</span>
+      {editingInfo ? (
+        <form className="card form-grid" onSubmit={handleUpdateInfo}>
+          <input placeholder="Phone" value={infoForm.phone}
+            onChange={(e) => setInfoForm({ ...infoForm, phone: e.target.value })} />
+          <input placeholder="Email" value={infoForm.email}
+            onChange={(e) => setInfoForm({ ...infoForm, email: e.target.value })} />
+          <input placeholder="Address" value={infoForm.address}
+            onChange={(e) => setInfoForm({ ...infoForm, address: e.target.value })} />
+
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            How did you get this customer?
+          </label>
+          <select value={infoForm.source}
+            onChange={(e) => setInfoForm({ ...infoForm, source: e.target.value })}>
+            <option value="">Select...</option>
+            {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {infoForm.source === 'Referral' && (
+            <input placeholder="Referred by..." value={infoForm.referral_name}
+              onChange={(e) => setInfoForm({ ...infoForm, referral_name: e.target.value })} />
+          )}
+
+          <textarea placeholder="Notes" value={infoForm.notes}
+            onChange={(e) => setInfoForm({ ...infoForm, notes: e.target.value })} />
+
+          <div className="card-actions">
+            <button type="submit">Save Changes</button>
+            <button type="button" className="btn-secondary" onClick={() => setEditingInfo(false)}>Cancel</button>
           </div>
-        )}
-      </div>
+        </form>
+      ) : (
+        <div className="card customer-info-grid">
+          <div className="customer-info-item">
+            <span className="customer-info-label">Phone</span>
+            <span>{customer.phone || '—'}</span>
+          </div>
+          <div className="customer-info-item">
+            <span className="customer-info-label">Email</span>
+            <span>{customer.email || '—'}</span>
+          </div>
+          <div className="customer-info-item">
+            <span className="customer-info-label">Address</span>
+            <span>{customer.address || '—'}</span>
+          </div>
+          <div className="customer-info-item">
+            <span className="customer-info-label">Source</span>
+            <span>
+              {customer.source || '—'}
+              {customer.source === 'Referral' && customer.referral_name ? ` — ${customer.referral_name}` : ''}
+            </span>
+          </div>
+          {customer.notes && (
+            <div className="customer-info-item customer-info-notes">
+              <span className="customer-info-label">Notes</span>
+              <span>{customer.notes}</span>
+            </div>
+          )}
+          <div className="customer-info-item">
+            <button className="btn-secondary" onClick={startEditInfo}>Edit Info</button>
+          </div>
+        </div>
+      )}
 
       <div className="page-header">
         <h2>Jobs</h2>

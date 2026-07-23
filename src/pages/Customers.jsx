@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 
+const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
+
+const EMPTY_FORM = { name: '', phone: '', email: '', address: '', notes: '', source: '', referral_name: '' }
+
 export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', notes: '', source: '' })
+  const [form, setForm] = useState(EMPTY_FORM)
 
   async function loadCustomers() {
     setLoading(true)
@@ -25,8 +29,9 @@ export default function Customers() {
 
   async function handleAddCustomer(e) {
     e.preventDefault()
-    await supabase.from('customers').insert([form])
-    setForm({ name: '', phone: '', email: '', address: '', notes: '', source: '' })
+    const payload = { ...form, referral_name: form.source === 'Referral' ? form.referral_name : null }
+    await supabase.from('customers').insert([payload])
+    setForm(EMPTY_FORM)
     setShowForm(false)
     loadCustomers()
   }
@@ -55,8 +60,18 @@ export default function Customers() {
             onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input placeholder="Address" value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <input placeholder="Source (e.g. Door knocking, Referral)" value={form.source}
-            onChange={(e) => setForm({ ...form, source: e.target.value })} />
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            How did you get this customer?
+          </label>
+          <select value={form.source}
+            onChange={(e) => setForm({ ...form, source: e.target.value })}>
+            <option value="">Select...</option>
+            {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {form.source === 'Referral' && (
+            <input placeholder="Referred by..." value={form.referral_name}
+              onChange={(e) => setForm({ ...form, referral_name: e.target.value })} />
+          )}
           <textarea placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <button type="submit">Save Customer</button>

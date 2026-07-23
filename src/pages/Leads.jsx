@@ -11,6 +11,8 @@ const WINDOW_TYPES = [
 
 const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
 
+const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
+
 const EMPTY_QUOTE = {
   windowType: WINDOW_TYPES[0],
   windowPrice: '',
@@ -22,15 +24,31 @@ const EMPTY_QUOTE = {
   notes: '',
 }
 
+const EMPTY_LEAD_FORM = { name: '', phone: '', email: '', address: '', source: '', referral_name: '', message: '' }
+
+function leadToEditForm(lead) {
+  return {
+    name: lead.name || '',
+    phone: lead.phone || '',
+    email: lead.email || '',
+    address: lead.address || '',
+    source: lead.source || '',
+    referral_name: lead.referral_name || '',
+    message: lead.message || '',
+  }
+}
+
 export default function Leads() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', message: '' })
+  const [form, setForm] = useState(EMPTY_LEAD_FORM)
   const [busyId, setBusyId] = useState(null)
   const [quoteLeadId, setQuoteLeadId] = useState(null)
   const [quoteForm, setQuoteForm] = useState(EMPTY_QUOTE)
   const [quoteEmail, setQuoteEmail] = useState(null)
+  const [editingLeadId, setEditingLeadId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
   const navigate = useNavigate()
 
   async function loadLeads() {
@@ -51,8 +69,29 @@ export default function Leads() {
   async function handleAddLead(e) {
     e.preventDefault()
     await supabase.from('leads').insert([form])
-    setForm({ name: '', phone: '', email: '', address: '', message: '' })
+    setForm(EMPTY_LEAD_FORM)
     setShowForm(false)
+    loadLeads()
+  }
+
+  function startEditLead(lead) {
+    setEditingLeadId(lead.id)
+    setEditForm(leadToEditForm(lead))
+  }
+
+  async function handleUpdateLead(e, lead) {
+    e.preventDefault()
+    await supabase.from('leads').update({
+      name: editForm.name,
+      phone: editForm.phone,
+      email: editForm.email,
+      address: editForm.address,
+      source: editForm.source,
+      referral_name: editForm.source === 'Referral' ? editForm.referral_name : null,
+      message: editForm.message,
+    }).eq('id', lead.id)
+    setEditingLeadId(null)
+    setEditForm(null)
     loadLeads()
   }
 
@@ -66,7 +105,8 @@ export default function Leads() {
         email: lead.email,
         address: lead.address,
         notes: lead.message,
-        source: 'Website / Lead',
+        source: lead.source || 'Website',
+        referral_name: lead.referral_name,
       }])
       .select()
       .single()
@@ -115,7 +155,8 @@ export default function Leads() {
         email: lead.email,
         address: lead.address,
         notes: lead.message,
-        source: 'Website / Lead',
+        source: lead.source || 'Website',
+        referral_name: lead.referral_name,
       }])
       .select()
       .single()
@@ -155,7 +196,7 @@ export default function Leads() {
     <div>
       <div className="page-header">
         <h1>Leads</h1>
-        <button onClick={() => setShowForm((v) => !v)}>
+        <button onClick={() => { setShowForm((v) => !v); setForm(EMPTY_LEAD_FORM) }}>
           {showForm ? 'Cancel' : '+ Add Lead'}
         </button>
       </div>
@@ -170,6 +211,20 @@ export default function Leads() {
             onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input placeholder="Address" value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })} />
+
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            How did you get this lead?
+          </label>
+          <select value={form.source}
+            onChange={(e) => setForm({ ...form, source: e.target.value })}>
+            <option value="">Select...</option>
+            {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {form.source === 'Referral' && (
+            <input placeholder="Referred by..." value={form.referral_name}
+              onChange={(e) => setForm({ ...form, referral_name: e.target.value })} />
+          )}
+
           <textarea placeholder="Notes" value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })} />
           <button type="submit">Save Lead</button>
@@ -184,30 +239,74 @@ export default function Leads() {
         <div className="card-list">
           {leads.map((lead) => (
             <div className="card" key={lead.id}>
-              <div className="card-main">
-                <strong>{lead.name}</strong>
-                <span>{lead.phone}</span>
-                <span>{lead.email}</span>
-                <span>{lead.address}</span>
-                {lead.message && <p className="card-notes">{lead.message}</p>}
-                <span className="card-date">
-                  {new Date(lead.created_at).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="card-actions">
-                <button disabled={busyId === lead.id} onClick={() => openQuoteForm(lead)}>
-                  Create Quote
-                </button>
-                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => convertToCustomer(lead)}>
-                  Convert to Customer
-                </button>
-                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => dismissLead(lead)}>
-                  Dismiss
-                </button>
-                <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => deleteLead(lead)}>
-                  Delete
-                </button>
-              </div>
+              {editingLeadId === lead.id ? (
+                <form className="form-grid" style={{ marginBottom: 0 }} onSubmit={(e) => handleUpdateLead(e, lead)}>
+                  <input placeholder="Name" required value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                  <input placeholder="Phone" value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+                  <input placeholder="Email" value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                  <input placeholder="Address" value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    How did you get this lead?
+                  </label>
+                  <select value={editForm.source}
+                    onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}>
+                    <option value="">Select...</option>
+                    {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {editForm.source === 'Referral' && (
+                    <input placeholder="Referred by..." value={editForm.referral_name}
+                      onChange={(e) => setEditForm({ ...editForm, referral_name: e.target.value })} />
+                  )}
+
+                  <textarea placeholder="Notes" value={editForm.message}
+                    onChange={(e) => setEditForm({ ...editForm, message: e.target.value })} />
+
+                  <div className="card-actions">
+                    <button type="submit">Save Changes</button>
+                    <button type="button" className="btn-secondary" onClick={() => setEditingLeadId(null)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="card-main">
+                    <strong>{lead.name}</strong>
+                    <span>{lead.phone}</span>
+                    <span>{lead.email}</span>
+                    <span>{lead.address}</span>
+                    {lead.source && (
+                      <span className="muted">
+                        {lead.source}{lead.source === 'Referral' && lead.referral_name ? ` — ${lead.referral_name}` : ''}
+                      </span>
+                    )}
+                    {lead.message && <p className="card-notes">{lead.message}</p>}
+                    <span className="card-date">
+                      {new Date(lead.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="card-actions">
+                    <button disabled={busyId === lead.id} onClick={() => openQuoteForm(lead)}>
+                      Create Quote
+                    </button>
+                    <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => startEditLead(lead)}>
+                      Edit
+                    </button>
+                    <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => convertToCustomer(lead)}>
+                      Convert to Customer
+                    </button>
+                    <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => dismissLead(lead)}>
+                      Dismiss
+                    </button>
+                    <button className="btn-secondary" disabled={busyId === lead.id} onClick={() => deleteLead(lead)}>
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
 
               {quoteLeadId === lead.id && (
                 <form className="form-grid" style={{ marginTop: 16 }} onSubmit={(e) => handleCreateQuote(e, lead)}>
