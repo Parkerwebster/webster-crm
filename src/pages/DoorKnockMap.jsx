@@ -7,8 +7,8 @@ const STATUS_OPTIONS = [
   { value: 'knocked', label: 'Knocked', color: '#1e88c7' },
   { value: 'no_answer', label: 'No Answer', color: '#b7791f' },
   { value: 'not_interested', label: 'Not Interested', color: '#c0392b' },
-  { value: 'lead', label: 'Interested / Lead', color: '#1e8e3e' },
-  { value: 'customer', label: 'Became Customer', color: '#0b3556' },
+  { value: 'lead', label: 'Interested / Lead', color: '#f2c40f' },
+  { value: 'customer', label: 'Became Customer', color: '#1e8e3e' },
 ]
 
 function statusColor(status) {
