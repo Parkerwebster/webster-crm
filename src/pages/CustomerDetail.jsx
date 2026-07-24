@@ -39,6 +39,10 @@ function parseServiceType(serviceType) {
   return { windowType, tracksOption }
 }
 
+function photoUrl(path) {
+  return supabase.storage.from('customer-photos').getPublicUrl(path).data.publicUrl
+}
+
 function customerToInfoForm(customer) {
   return {
     phone: customer.phone || '',
@@ -70,6 +74,9 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null)
   const [jobs, setJobs] = useState([])
   const [technicians, setTechnicians] = useState([])
+  const [photos, setPhotos] = useState([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const [lightboxPhoto, setLightboxPhoto] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [quoteEmail, setQuoteEmail] = useState(null)
@@ -82,14 +89,16 @@ export default function CustomerDetail() {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: customerData }, { data: jobsData }, { data: techData }] = await Promise.all([
+    const [{ data: customerData }, { data: jobsData }, { data: techData }, { data: photosData }] = await Promise.all([
       supabase.from('customers').select('*').eq('id', id).single(),
       supabase.from('jobs').select('*, technicians(id, name, color)').eq('customer_id', id).order('created_at', { ascending: false }),
       supabase.from('technicians').select('*').eq('active', true).order('name'),
+      supabase.from('customer_photos').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
     ])
     setCustomer(customerData)
     setJobs(jobsData ?? [])
     setTechnicians(techData ?? [])
+    setPhotos(photosData ?? [])
     setLoading(false)
   }
 
@@ -117,6 +126,30 @@ export default function CustomerDetail() {
     }])
     setForm(EMPTY_JOB_FORM)
     setShowForm(false)
+    loadData()
+  }
+
+  async function handlePhotoUpload(e) {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setUploadingPhotos(true)
+    for (const file of files) {
+      const path = `${id}/${crypto.randomUUID()}-${file.name}`
+      const { error: uploadError } = await supabase.storage.from('customer-photos').upload(path, file)
+      if (!uploadError) {
+        await supabase.from('customer_photos').insert([{ customer_id: id, storage_path: path }])
+      }
+    }
+    e.target.value = ''
+    setUploadingPhotos(false)
+    loadData()
+  }
+
+  async function deletePhoto(photo) {
+    if (!window.confirm('Delete this photo?')) return
+    await supabase.storage.from('customer-photos').remove([photo.storage_path])
+    await supabase.from('customer_photos').delete().eq('id', photo.id)
+    setLightboxPhoto(null)
     loadData()
   }
 
@@ -316,6 +349,42 @@ export default function CustomerDetail() {
               <span>{customer.notes}</span>
             </div>
           )}
+        </div>
+      )}
+
+      <div className="page-header">
+        <h2>Photos</h2>
+        <label className="btn-file">
+          {uploadingPhotos ? 'Uploading...' : '+ Add Photos'}
+          <input type="file" accept="image/*" multiple hidden disabled={uploadingPhotos} onChange={handlePhotoUpload} />
+        </label>
+      </div>
+
+      {photos.length === 0 ? (
+        <p className="empty-state">No photos yet.</p>
+      ) : (
+        <div className="photo-grid">
+          {photos.map((photo) => (
+            <img
+              key={photo.id}
+              src={photoUrl(photo.storage_path)}
+              alt=""
+              className="photo-thumb"
+              onClick={() => setLightboxPhoto(photo)}
+            />
+          ))}
+        </div>
+      )}
+
+      {lightboxPhoto && (
+        <div className="modal-overlay" onClick={() => setLightboxPhoto(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <img src={photoUrl(lightboxPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <div className="card-actions">
+              <button className="btn-secondary" onClick={() => setLightboxPhoto(null)}>Close</button>
+              <button className="btn-secondary" onClick={() => deletePhoto(lightboxPhoto)}>Delete</button>
+            </div>
+          </div>
         </div>
       )}
 
