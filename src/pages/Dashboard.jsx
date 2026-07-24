@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { formatTimeRange } from '../lib/format'
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
+  const [todayJobs, setTodayJobs] = useState([])
   const [upcomingJobs, setUpcomingJobs] = useState([])
   const [unpaid, setUnpaid] = useState({ count: 0, total: 0 })
   const [recentLeads, setRecentLeads] = useState([])
@@ -34,6 +36,7 @@ export default function Dashboard() {
       ])
 
       setUpcomingJobs(jobsData ?? [])
+      setTodayJobs((jobsData ?? []).filter((j) => j.scheduled_date === todayStr))
       const total = (unpaidData ?? []).reduce((sum, j) => sum + (Number(j.price) || 0), 0)
       setUnpaid({ count: (unpaidData ?? []).length, total })
       setRecentLeads(leadsData ?? [])
@@ -65,6 +68,29 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <section>
+        <h2>Today's Jobs</h2>
+        {todayJobs.length === 0 ? (
+          <p className="empty-state">Nothing scheduled today.</p>
+        ) : (
+          <div className="card-list">
+            {todayJobs.map((job) => (
+              <div className="card" key={job.id}>
+                <div className="card-main">
+                  <Link to={`/customers/${job.customers?.id}`} className="strong">
+                    {job.customers?.name}
+                  </Link>
+                  {job.start_time && <span>{formatTimeRange(job.start_time, job.end_time)}</span>}
+                  <span>{job.service_type}</span>
+                  {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
+                  <span className="muted">{job.customers?.address}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className="dashboard-grid">
         <section>
           <h2>This Week's Jobs</h2>
@@ -78,7 +104,9 @@ export default function Dashboard() {
                     <Link to={`/customers/${job.customers?.id}`} className="strong">
                       {job.customers?.name}
                     </Link>
-                    <span>{job.scheduled_date}</span>
+                    <span>{job.scheduled_date}{job.start_time && ` · ${formatTimeRange(job.start_time, job.end_time)}`}</span>
+                    <span>{job.service_type}</span>
+                    {job.price != null && <span>${Number(job.price).toFixed(2)}</span>}
                     <span className="muted">{job.customers?.address}</span>
                   </div>
                 </div>
