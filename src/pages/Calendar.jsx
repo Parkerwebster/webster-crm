@@ -21,6 +21,7 @@ const EMPTY_SCHEDULE_FORM = {
   startTime: '',
   endTime: '',
   notes: '',
+  technicianId: '',
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -49,6 +50,7 @@ export default function Calendar() {
   const [jobs, setJobs] = useState([])
   const [leads, setLeads] = useState([])
   const [customers, setCustomers] = useState([])
+  const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
   const [scheduleDate, setScheduleDate] = useState(null)
   const [form, setForm] = useState(EMPTY_SCHEDULE_FORM)
@@ -56,14 +58,16 @@ export default function Calendar() {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: jobsData }, { data: leadsData }, { data: customersData }] = await Promise.all([
-      supabase.from('jobs').select('*, customers(id, name, address, phone)').not('scheduled_date', 'is', null),
+    const [{ data: jobsData }, { data: leadsData }, { data: customersData }, { data: techData }] = await Promise.all([
+      supabase.from('jobs').select('*, customers(id, name, address, phone), technicians(id, name, color)').not('scheduled_date', 'is', null),
       supabase.from('leads').select('*').eq('converted', false).order('name'),
       supabase.from('customers').select('id, name').order('name'),
+      supabase.from('technicians').select('*').eq('active', true).order('name'),
     ])
     setJobs(jobsData ?? [])
     setLeads(leadsData ?? [])
     setCustomers(customersData ?? [])
+    setTechnicians(techData ?? [])
     setLoading(false)
   }
 
@@ -146,6 +150,7 @@ export default function Calendar() {
       end_time: form.endTime || null,
       notes: form.notes,
       status: 'scheduled',
+      technician_id: form.technicianId || null,
     }])
 
     setSubmitting(false)
@@ -195,8 +200,11 @@ export default function Calendar() {
                       to={`/customers/${job.customers?.id}`}
                       key={job.id}
                       className={`calendar-job-chip status-${job.status}`}
-                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.start_time ? ` — ${formatTimeRange(job.start_time, job.end_time)}` : ''}`}
+                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.start_time ? ` — ${formatTimeRange(job.start_time, job.end_time)}` : ''}${job.technicians ? ` — ${job.technicians.name}` : ''}`}
                     >
+                      {job.technicians && (
+                        <span className="calendar-job-chip-tech" style={{ background: job.technicians.color }} />
+                      )}
                       {job.start_time && <span className="calendar-job-chip-time">{formatTime(job.start_time)}</span>}
                       {' '}{job.customers?.name ?? 'Unknown'}
                     </Link>
@@ -297,6 +305,17 @@ export default function Calendar() {
                     onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
                 </div>
               </div>
+
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Technician
+              </label>
+              <select value={form.technicianId}
+                onChange={(e) => setForm({ ...form, technicianId: e.target.value })}>
+                <option value="">Unassigned</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
 
               <textarea placeholder="Notes" value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })} />

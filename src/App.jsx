@@ -9,6 +9,7 @@ import CustomerDetail from './pages/CustomerDetail'
 import Jobs from './pages/Jobs'
 import Calendar from './pages/Calendar'
 import DoorKnockMap from './pages/DoorKnockMap'
+import Technicians from './pages/Technicians'
 import Account from './pages/Account'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="jobs" element={<Jobs />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="door-knocking" element={<DoorKnockMap />} />
+        <Route path="technicians" element={<Technicians />} />
         <Route path="account" element={<Account />} />
       </Route>
     </Routes>

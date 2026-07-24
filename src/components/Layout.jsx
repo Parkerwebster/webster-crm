@@ -15,6 +15,7 @@ export default function Layout() {
           <NavLink to="/jobs">Jobs</NavLink>
           <NavLink to="/calendar">Calendar</NavLink>
           <NavLink to="/door-knocking">Door Knocking</NavLink>
+          <NavLink to="/technicians">Technicians</NavLink>
           <NavLink to="/account">Account</NavLink>
         </nav>
         <div className="sidebar-footer">

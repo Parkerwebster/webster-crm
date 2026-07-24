@@ -25,6 +25,7 @@ const EMPTY_JOB_FORM = {
   startTime: '',
   endTime: '',
   notes: '',
+  technicianId: '',
 }
 
 function nextStatus(status) {
@@ -59,6 +60,7 @@ function jobToEditForm(job) {
     startTime: job.start_time ? job.start_time.slice(0, 5) : '',
     endTime: job.end_time ? job.end_time.slice(0, 5) : '',
     notes: job.notes || '',
+    technicianId: job.technician_id || '',
   }
 }
 
@@ -67,6 +69,7 @@ export default function CustomerDetail() {
   const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [jobs, setJobs] = useState([])
+  const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [quoteEmail, setQuoteEmail] = useState(null)
@@ -79,12 +82,14 @@ export default function CustomerDetail() {
 
   async function loadData() {
     setLoading(true)
-    const [{ data: customerData }, { data: jobsData }] = await Promise.all([
+    const [{ data: customerData }, { data: jobsData }, { data: techData }] = await Promise.all([
       supabase.from('customers').select('*').eq('id', id).single(),
-      supabase.from('jobs').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+      supabase.from('jobs').select('*, technicians(id, name, color)').eq('customer_id', id).order('created_at', { ascending: false }),
+      supabase.from('technicians').select('*').eq('active', true).order('name'),
     ])
     setCustomer(customerData)
     setJobs(jobsData ?? [])
+    setTechnicians(techData ?? [])
     setLoading(false)
   }
 
@@ -108,6 +113,7 @@ export default function CustomerDetail() {
       start_time: form.startTime || null,
       end_time: form.endTime || null,
       notes: form.notes,
+      technician_id: form.technicianId || null,
     }])
     setForm(EMPTY_JOB_FORM)
     setShowForm(false)
@@ -152,6 +158,7 @@ export default function CustomerDetail() {
       start_time: editForm.startTime || null,
       end_time: editForm.endTime || null,
       notes: editForm.notes,
+      technician_id: editForm.technicianId || null,
       updated_at: new Date().toISOString(),
     }).eq('id', job.id)
 
@@ -359,6 +366,17 @@ export default function CustomerDetail() {
             </div>
           </div>
 
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            Technician
+          </label>
+          <select value={form.technicianId}
+            onChange={(e) => setForm({ ...form, technicianId: e.target.value })}>
+            <option value="">Unassigned</option>
+            {technicians.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+
           <textarea placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <button type="submit">Save Job</button>
@@ -411,6 +429,17 @@ export default function CustomerDetail() {
                     </div>
                   </div>
 
+                  <label htmlFor={`edit-tech-${job.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Technician
+                  </label>
+                  <select id={`edit-tech-${job.id}`} value={editForm.technicianId}
+                    onChange={(e) => setEditForm({ ...editForm, technicianId: e.target.value })}>
+                    <option value="">Unassigned</option>
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+
                   <textarea placeholder="Notes" value={editForm.notes}
                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
 
@@ -434,6 +463,12 @@ export default function CustomerDetail() {
                     <span className="muted">
                       Quoted {new Date(job.created_at).toLocaleDateString()}
                     </span>
+                    {job.technicians && (
+                      <span className="tech-badge">
+                        <span className="tech-dot" style={{ background: job.technicians.color }} />
+                        {job.technicians.name}
+                      </span>
+                    )}
                     {job.notes && <p className="card-notes">{job.notes}</p>}
                   </div>
                   <div className="card-actions">

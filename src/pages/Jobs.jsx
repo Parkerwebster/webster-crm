@@ -29,7 +29,7 @@ export default function Jobs() {
     setLoading(true)
     const { data } = await supabase
       .from('jobs')
-      .select('*, customers(id, name, address, phone, email)')
+      .select('*, customers(id, name, address, phone, email), technicians(id, name, color)')
       .order('scheduled_date', { ascending: true, nullsFirst: false })
     setJobs(data ?? [])
     setLoading(false)
@@ -139,6 +139,12 @@ export default function Jobs() {
                 <span className="muted">
                   Quoted {new Date(job.created_at).toLocaleDateString()}
                 </span>
+                {job.technicians && (
+                  <span className="tech-badge">
+                    <span className="tech-dot" style={{ background: job.technicians.color }} />
+                    {job.technicians.name}
+                  </span>
+                )}
                 {job.customers?.address && <span className="muted">{job.customers.address}</span>}
               </div>
               <div className="card-actions">

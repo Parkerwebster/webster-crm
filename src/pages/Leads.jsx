@@ -22,6 +22,7 @@ const EMPTY_QUOTE = {
   startTime: '',
   endTime: '',
   notes: '',
+  technicianId: '',
 }
 
 const EMPTY_LEAD_FORM = { name: '', phone: '', email: '', address: '', source: '', referral_name: '', message: '' }
@@ -40,6 +41,7 @@ function leadToEditForm(lead) {
 
 export default function Leads() {
   const [leads, setLeads] = useState([])
+  const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_LEAD_FORM)
@@ -62,8 +64,14 @@ export default function Leads() {
     setLoading(false)
   }
 
+  async function loadTechnicians() {
+    const { data } = await supabase.from('technicians').select('*').eq('active', true).order('name')
+    setTechnicians(data ?? [])
+  }
+
   useEffect(() => {
     loadLeads()
+    loadTechnicians()
   }, [])
 
   async function handleAddLead(e) {
@@ -176,6 +184,7 @@ export default function Leads() {
         start_time: quoteForm.startTime || null,
         end_time: quoteForm.endTime || null,
         notes: quoteForm.notes,
+        technician_id: quoteForm.technicianId || null,
       }])
       .select()
       .single()
@@ -347,6 +356,17 @@ export default function Leads() {
                         onChange={(e) => setQuoteForm({ ...quoteForm, endTime: e.target.value })} />
                     </div>
                   </div>
+
+                  <label htmlFor={`tech-${lead.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Technician
+                  </label>
+                  <select id={`tech-${lead.id}`} value={quoteForm.technicianId}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, technicianId: e.target.value })}>
+                    <option value="">Unassigned</option>
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
 
                   <textarea placeholder="Notes" value={quoteForm.notes}
                     onChange={(e) => setQuoteForm({ ...quoteForm, notes: e.target.value })} />
