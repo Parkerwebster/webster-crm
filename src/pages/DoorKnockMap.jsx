@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../lib/supabaseClient'
+import { useAccount } from '../context/AccountContext'
 
 const STATUS_OPTIONS = [
   { value: 'knocked', label: 'Knocked', color: '#1e88c7' },
@@ -73,6 +74,7 @@ function DoorPin({ knock, onSave, onDelete, onConvert }) {
 }
 
 export default function DoorKnockMap() {
+  const { accountId } = useAccount()
   const [knocks, setKnocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [newPin, setNewPin] = useState(null)
@@ -109,6 +111,7 @@ export default function DoorKnockMap() {
       status: pinForm.status,
       address: pinForm.label || null,
       notes: pinForm.notes || null,
+      account_id: accountId,
     }]).select().single()
     if (!error && data) {
       setKnocks((prev) => [data, ...prev])
@@ -141,6 +144,7 @@ export default function DoorKnockMap() {
       address: form.label || null,
       source: 'Door Knocking',
       message: form.notes || null,
+      account_id: accountId,
     }])
   }
 

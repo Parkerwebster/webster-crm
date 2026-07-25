@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
 import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
+import { useAccount } from '../context/AccountContext'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -19,6 +20,7 @@ function nextStatus(status) {
 }
 
 export default function Jobs() {
+  const { accountId } = useAccount()
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('upcoming')
@@ -64,6 +66,7 @@ export default function Jobs() {
     const { data, error } = await supabase.functions.invoke('send-invoice', {
       body: {
         job_id: job.id,
+        account_id: accountId,
         customer_name: customer.name,
         customer_email: customer.email,
         service_type: job.service_type,

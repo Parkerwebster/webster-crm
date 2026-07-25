@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
 import QuoteEmailModal from '../components/QuoteEmailModal'
+import { useAccount } from '../context/AccountContext'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -40,6 +41,7 @@ function leadToEditForm(lead) {
 }
 
 export default function Leads() {
+  const { accountId } = useAccount()
   const [leads, setLeads] = useState([])
   const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
@@ -76,7 +78,7 @@ export default function Leads() {
 
   async function handleAddLead(e) {
     e.preventDefault()
-    await supabase.from('leads').insert([form])
+    await supabase.from('leads').insert([{ ...form, account_id: accountId }])
     setForm(EMPTY_LEAD_FORM)
     setShowForm(false)
     loadLeads()
@@ -115,6 +117,7 @@ export default function Leads() {
         notes: lead.message,
         source: lead.source || 'Website',
         referral_name: lead.referral_name,
+        account_id: accountId,
       }])
       .select()
       .single()
@@ -165,6 +168,7 @@ export default function Leads() {
         notes: lead.message,
         source: lead.source || 'Website',
         referral_name: lead.referral_name,
+        account_id: accountId,
       }])
       .select()
       .single()
@@ -185,6 +189,7 @@ export default function Leads() {
         end_time: quoteForm.endTime || null,
         notes: quoteForm.notes,
         technician_id: quoteForm.technicianId || null,
+        account_id: accountId,
       }])
       .select()
       .single()

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { formatTime, formatTimeRange } from '../lib/format'
+import { useAccount } from '../context/AccountContext'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -45,6 +46,7 @@ function buildMonthGrid(year, month) {
 }
 
 export default function Calendar() {
+  const { accountId } = useAccount()
   const today = new Date()
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [jobs, setJobs] = useState([])
@@ -120,6 +122,7 @@ export default function Calendar() {
           address: lead.address,
           notes: lead.message,
           source: 'Website / Lead',
+          account_id: accountId,
         }])
         .select()
         .single()
@@ -151,6 +154,7 @@ export default function Calendar() {
       notes: form.notes,
       status: 'scheduled',
       technician_id: form.technicianId || null,
+      account_id: accountId,
     }])
 
     setSubmitting(false)

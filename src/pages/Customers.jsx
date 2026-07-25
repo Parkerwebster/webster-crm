@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { useAccount } from '../context/AccountContext'
 
 const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
 
 const EMPTY_FORM = { name: '', phone: '', email: '', address: '', notes: '', source: '', referral_name: '' }
 
 export default function Customers() {
+  const { accountId } = useAccount()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -29,7 +31,7 @@ export default function Customers() {
 
   async function handleAddCustomer(e) {
     e.preventDefault()
-    const payload = { ...form, referral_name: form.source === 'Referral' ? form.referral_name : null }
+    const payload = { ...form, referral_name: form.source === 'Referral' ? form.referral_name : null, account_id: accountId }
     await supabase.from('customers').insert([payload])
     setForm(EMPTY_FORM)
     setShowForm(false)

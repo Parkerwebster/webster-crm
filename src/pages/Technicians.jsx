@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useAccount } from '../context/AccountContext'
 
 const COLOR_PALETTE = ['#1565a3', '#1e8e3e', '#c0392b', '#b7791f', '#8e44ad', '#e67e22', '#16a085', '#d63384']
 
 const EMPTY_FORM = { name: '', phone: '' }
 
 export default function Technicians() {
+  const { accountId } = useAccount()
   const [technicians, setTechnicians] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -25,7 +27,7 @@ export default function Technicians() {
   async function handleAdd(e) {
     e.preventDefault()
     const color = COLOR_PALETTE[technicians.length % COLOR_PALETTE.length]
-    await supabase.from('technicians').insert([{ name: form.name, phone: form.phone, color }])
+    await supabase.from('technicians').insert([{ name: form.name, phone: form.phone, color, account_id: accountId }])
     setForm(EMPTY_FORM)
     setShowForm(false)
     loadTechnicians()

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
 import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
+import { useAccount } from '../context/AccountContext'
 
 const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
 
@@ -69,6 +70,7 @@ function jobToEditForm(job) {
 }
 
 export default function CustomerDetail() {
+  const { accountId } = useAccount()
   const { id } = useParams()
   const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
@@ -123,6 +125,7 @@ export default function CustomerDetail() {
       end_time: form.endTime || null,
       notes: form.notes,
       technician_id: form.technicianId || null,
+      account_id: accountId,
     }])
     setForm(EMPTY_JOB_FORM)
     setShowForm(false)
@@ -137,7 +140,7 @@ export default function CustomerDetail() {
       const path = `${id}/${crypto.randomUUID()}-${file.name}`
       const { error: uploadError } = await supabase.storage.from('customer-photos').upload(path, file)
       if (!uploadError) {
-        await supabase.from('customer_photos').insert([{ customer_id: id, storage_path: path }])
+        await supabase.from('customer_photos').insert([{ customer_id: id, storage_path: path, account_id: accountId }])
       }
     }
     e.target.value = ''
@@ -230,6 +233,7 @@ export default function CustomerDetail() {
     const { data, error } = await supabase.functions.invoke('send-invoice', {
       body: {
         job_id: job.id,
+        account_id: accountId,
         customer_name: customer.name,
         customer_email: customer.email,
         service_type: job.service_type,
@@ -271,6 +275,7 @@ export default function CustomerDetail() {
       message: customer.notes,
       source: customer.source,
       referral_name: customer.referral_name,
+      account_id: accountId,
     }])
     await supabase.from('customers').delete().eq('id', id)
     navigate('/leads')
