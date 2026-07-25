@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../lib/supabaseClient'
@@ -82,6 +82,25 @@ export default function DoorKnockMap() {
   const [saving, setSaving] = useState(false)
   const mapRef = useRef(null)
 
+  const stats = useMemo(() => {
+    const total = knocks.length
+    const counts = {}
+    STATUS_OPTIONS.forEach((s) => { counts[s.value] = 0 })
+    knocks.forEach((k) => { counts[k.status] = (counts[k.status] || 0) + 1 })
+    const customers = counts.customer || 0
+    const leads = counts.lead || 0
+    const notesList = knocks.filter((k) => k.notes && k.notes.trim())
+    return {
+      total,
+      counts,
+      customers,
+      leads,
+      conversionRate: total > 0 ? (customers / total) * 100 : 0,
+      interestRate: total > 0 ? ((leads + customers) / total) * 100 : 0,
+      notesList,
+    }
+  }, [knocks])
+
   async function loadKnocks() {
     setLoading(true)
     const { data } = await supabase.from('door_knocks').select('*').order('created_at', { ascending: false })
@@ -155,6 +174,49 @@ export default function DoorKnockMap() {
         <button className="btn-secondary" onClick={locateMe}>Locate Me</button>
       </div>
 
+      <div className="stat-grid">
+        <div className="stat-card">
+          <span className="stat-value">{stats.total}</span>
+          <span className="stat-label">Doors Knocked</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.leads}</span>
+          <span className="stat-label">Interested / Leads</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.customers}</span>
+          <span className="stat-label">Became Customers</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.conversionRate.toFixed(1)}%</span>
+          <span className="stat-label">Conversion Rate</span>
+        </div>
+      </div>
+
+      <div className="card map-breakdown">
+        <h2 style={{ marginTop: 0 }}>Breakdown</h2>
+        {stats.total === 0 ? (
+          <p className="empty-state">No pins yet. Drop your first pin on the map below.</p>
+        ) : (
+          STATUS_OPTIONS.map((s) => {
+            const count = stats.counts[s.value] || 0
+            const pct = stats.total > 0 ? (count / stats.total) * 100 : 0
+            return (
+              <div className="map-breakdown-row" key={s.value}>
+                <span className="map-breakdown-label">
+                  <span className="map-legend-dot" style={{ background: s.color }} />
+                  {s.label}
+                </span>
+                <div className="map-breakdown-bar">
+                  <div className="map-breakdown-bar-fill" style={{ width: `${pct}%`, background: s.color }} />
+                </div>
+                <span className="map-breakdown-count">{count} ({pct.toFixed(0)}%)</span>
+              </div>
+            )
+          })
+        )}
+      </div>
+
       <div className="map-legend">
         {STATUS_OPTIONS.map((s) => (
           <span className="map-legend-item" key={s.value}>
@@ -196,6 +258,29 @@ export default function DoorKnockMap() {
             />
           ))}
         </MapContainer>
+      </div>
+
+      <div className="card map-notes">
+        <h2 style={{ marginTop: 0 }}>Notes ({stats.notesList.length})</h2>
+        {stats.notesList.length === 0 ? (
+          <p className="empty-state">No notes yet. Add notes to a pin to see them here.</p>
+        ) : (
+          <div className="card-list">
+            {stats.notesList.map((k) => (
+              <div className="card" key={k.id}>
+                <div className="card-main">
+                  <span className="map-legend-item">
+                    <span className="map-legend-dot" style={{ background: statusColor(k.status) }} />
+                    {STATUS_OPTIONS.find((s) => s.value === k.status)?.label}
+                  </span>
+                  {k.address && <strong>{k.address}</strong>}
+                  <p className="card-notes">{k.notes}</p>
+                  <span className="card-date">{new Date(k.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {newPin && (
