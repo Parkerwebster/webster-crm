@@ -19,6 +19,40 @@ function statusColor(status) {
 const DENTON_CENTER = [33.2148, -97.1331]
 const EMPTY_PIN_FORM = { status: 'knocked', label: '', notes: '' }
 
+const RANGE_OPTIONS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'all', label: 'All Time' },
+]
+
+function startOfToday() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function startOfWeek() {
+  const d = startOfToday()
+  d.setDate(d.getDate() - d.getDay())
+  return d
+}
+
+function computeStats(list) {
+  const total = list.length
+  const counts = {}
+  STATUS_OPTIONS.forEach((s) => { counts[s.value] = 0 })
+  list.forEach((k) => { counts[k.status] = (counts[k.status] || 0) + 1 })
+  const customers = counts.customer || 0
+  const leads = counts.lead || 0
+  return {
+    total,
+    counts,
+    customers,
+    leads,
+    conversionRate: total > 0 ? (customers / total) * 100 : 0,
+  }
+}
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -79,26 +113,27 @@ export default function DoorKnockMap() {
   const [newPin, setNewPin] = useState(null)
   const [pinForm, setPinForm] = useState(EMPTY_PIN_FORM)
   const [saving, setSaving] = useState(false)
+  const [range, setRange] = useState('today')
   const mapRef = useRef(null)
 
-  const stats = useMemo(() => {
-    const total = knocks.length
-    const counts = {}
-    STATUS_OPTIONS.forEach((s) => { counts[s.value] = 0 })
-    knocks.forEach((k) => { counts[k.status] = (counts[k.status] || 0) + 1 })
-    const customers = counts.customer || 0
-    const leads = counts.lead || 0
-    const notesList = knocks.filter((k) => k.notes && k.notes.trim())
+  const notesList = useMemo(
+    () => knocks.filter((k) => k.notes && k.notes.trim()),
+    [knocks]
+  )
+
+  const statsByRange = useMemo(() => {
+    const todayStart = startOfToday()
+    const weekStart = startOfWeek()
+    const todayKnocks = knocks.filter((k) => new Date(k.created_at) >= todayStart)
+    const weekKnocks = knocks.filter((k) => new Date(k.created_at) >= weekStart)
     return {
-      total,
-      counts,
-      customers,
-      leads,
-      conversionRate: total > 0 ? (customers / total) * 100 : 0,
-      interestRate: total > 0 ? ((leads + customers) / total) * 100 : 0,
-      notesList,
+      today: computeStats(todayKnocks),
+      week: computeStats(weekKnocks),
+      all: computeStats(knocks),
     }
   }, [knocks])
+
+  const stats = statsByRange[range]
 
   async function loadKnocks() {
     setLoading(true)
@@ -173,6 +208,19 @@ export default function DoorKnockMap() {
         <button className="btn-secondary" onClick={locateMe}>Locate Me</button>
       </div>
 
+      <div className="map-range-tabs">
+        {RANGE_OPTIONS.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            className={range === r.key ? 'map-range-tab active' : 'map-range-tab'}
+            onClick={() => setRange(r.key)}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
       <div className="stat-grid">
         <div className="stat-card">
           <span className="stat-value">{stats.total}</span>
@@ -193,9 +241,11 @@ export default function DoorKnockMap() {
       </div>
 
       <div className="card map-breakdown">
-        <h2 style={{ marginTop: 0 }}>Breakdown</h2>
+        <h2 style={{ marginTop: 0 }}>Breakdown &mdash; {RANGE_OPTIONS.find((r) => r.key === range)?.label}</h2>
         {stats.total === 0 ? (
-          <p className="empty-state">No pins yet. Drop your first pin on the map below.</p>
+          <p className="empty-state">
+            {range === 'all' ? 'No pins yet. Drop your first pin on the map below.' : `No doors knocked yet for this ${range === 'today' ? 'day' : 'week'}.`}
+          </p>
         ) : (
           STATUS_OPTIONS.map((s) => {
             const count = stats.counts[s.value] || 0
@@ -260,12 +310,12 @@ export default function DoorKnockMap() {
       </div>
 
       <div className="card map-notes">
-        <h2 style={{ marginTop: 0 }}>Notes ({stats.notesList.length})</h2>
-        {stats.notesList.length === 0 ? (
+        <h2 style={{ marginTop: 0 }}>Notes ({notesList.length})</h2>
+        {notesList.length === 0 ? (
           <p className="empty-state">No notes yet. Add notes to a pin to see them here.</p>
         ) : (
           <div className="card-list">
-            {stats.notesList.map((k) => (
+            {notesList.map((k) => (
               <div className="card" key={k.id}>
                 <div className="card-main">
                   <span className="map-legend-item">
