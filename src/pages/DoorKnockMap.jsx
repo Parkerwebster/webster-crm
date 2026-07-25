@@ -37,6 +37,24 @@ function startOfWeek() {
   return d
 }
 
+function formatRangeLabel(range) {
+  if (range === 'today') {
+    return startOfToday().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  }
+  if (range === 'week') {
+    const start = startOfWeek()
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
+    const year = end.getFullYear()
+    return startMonth === endMonth
+      ? `${startMonth} ${start.getDate()} – ${end.getDate()}, ${year}`
+      : `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}, ${year}`
+  }
+  return null
+}
+
 function computeStats(list) {
   const total = list.length
   const counts = {}
@@ -220,6 +238,10 @@ export default function DoorKnockMap() {
           </button>
         ))}
       </div>
+
+      {formatRangeLabel(range) && (
+        <p className="map-range-date">{formatRangeLabel(range)}</p>
+      )}
 
       <div className="stat-grid">
         <div className="stat-card">
