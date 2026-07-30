@@ -17,7 +17,7 @@ function statusColor(status) {
 }
 
 const DENTON_CENTER = [33.2148, -97.1331]
-const EMPTY_PIN_FORM = { status: 'knocked', label: '', notes: '' }
+const EMPTY_PIN_FORM = { status: 'knocked', label: '', name: '', phone: '', email: '', notes: '' }
 
 const RANGE_OPTIONS = [
   { key: 'today', label: 'Today' },
@@ -81,7 +81,14 @@ function ClickHandler({ onMapClick }) {
 }
 
 function DoorPin({ knock, onSave, onDelete, onConvert }) {
-  const [form, setForm] = useState({ status: knock.status, label: knock.address || '', notes: knock.notes || '' })
+  const [form, setForm] = useState({
+    status: knock.status,
+    label: knock.address || '',
+    name: knock.name || '',
+    phone: knock.phone || '',
+    email: knock.email || '',
+    notes: knock.notes || '',
+  })
   const [saving, setSaving] = useState(false)
   const [converted, setConverted] = useState(false)
 
@@ -98,6 +105,12 @@ function DoorPin({ knock, onSave, onDelete, onConvert }) {
           </select>
           <input placeholder="Address / label" value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })} />
+          <input placeholder="Name" value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input type="tel" placeholder="Phone" value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <input type="email" placeholder="Email" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <textarea placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           <div className="map-popup-actions">
@@ -181,6 +194,9 @@ export default function DoorKnockMap() {
       lng: newPin.lng,
       status: pinForm.status,
       address: pinForm.label || null,
+      name: pinForm.name || null,
+      phone: pinForm.phone || null,
+      email: pinForm.email || null,
       notes: pinForm.notes || null,
       account_id: accountId,
     }]).select().single()
@@ -195,11 +211,16 @@ export default function DoorKnockMap() {
     await supabase.from('door_knocks').update({
       status: form.status,
       address: form.label || null,
+      name: form.name || null,
+      phone: form.phone || null,
+      email: form.email || null,
       notes: form.notes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', knock.id)
     setKnocks((prev) => prev.map((k) =>
-      k.id === knock.id ? { ...k, status: form.status, address: form.label || null, notes: form.notes || null } : k
+      k.id === knock.id
+        ? { ...k, status: form.status, address: form.label || null, name: form.name || null, phone: form.phone || null, email: form.email || null, notes: form.notes || null }
+        : k
     ))
   }
 
@@ -211,7 +232,9 @@ export default function DoorKnockMap() {
 
   async function convertPinToLead(knock, form) {
     await supabase.from('leads').insert([{
-      name: form.label || 'Door Knock Lead',
+      name: form.name || form.label || 'Door Knock Lead',
+      phone: form.phone || null,
+      email: form.email || null,
       address: form.label || null,
       source: 'Door Knocking',
       message: form.notes || null,
@@ -344,7 +367,8 @@ export default function DoorKnockMap() {
                     <span className="map-legend-dot" style={{ background: statusColor(k.status) }} />
                     {STATUS_OPTIONS.find((s) => s.value === k.status)?.label}
                   </span>
-                  {k.address && <strong>{k.address}</strong>}
+                  {k.name && <strong>{k.name}</strong>}
+                  {k.address && <span className="muted">{k.address}</span>}
                   <p className="card-notes">{k.notes}</p>
                   <span className="card-date">{new Date(k.created_at).toLocaleDateString()}</span>
                 </div>
@@ -367,6 +391,12 @@ export default function DoorKnockMap() {
               </select>
               <input placeholder="Address / label (optional)" value={pinForm.label}
                 onChange={(e) => setPinForm({ ...pinForm, label: e.target.value })} />
+              <input placeholder="Name" value={pinForm.name}
+                onChange={(e) => setPinForm({ ...pinForm, name: e.target.value })} />
+              <input type="tel" placeholder="Phone" value={pinForm.phone}
+                onChange={(e) => setPinForm({ ...pinForm, phone: e.target.value })} />
+              <input type="email" placeholder="Email" value={pinForm.email}
+                onChange={(e) => setPinForm({ ...pinForm, email: e.target.value })} />
               <textarea placeholder="Notes" value={pinForm.notes}
                 onChange={(e) => setPinForm({ ...pinForm, notes: e.target.value })} />
               <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Pin'}</button>
