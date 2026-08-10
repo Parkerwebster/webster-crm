@@ -5,8 +5,7 @@ import { buildQuoteEmail } from '../lib/quoteEmail'
 import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
-
-const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
+import { nextStatus, advanceJobStatus, RECURRING_OPTIONS } from '../lib/jobLifecycle'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -27,11 +26,7 @@ const EMPTY_JOB_FORM = {
   endTime: '',
   notes: '',
   technicianId: '',
-}
-
-function nextStatus(status) {
-  const idx = STATUS_FLOW.indexOf(status)
-  return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null
+  recurringInterval: 'none',
 }
 
 function parseServiceType(serviceType) {
@@ -125,6 +120,7 @@ export default function CustomerDetail() {
       end_time: form.endTime || null,
       notes: form.notes,
       technician_id: form.technicianId || null,
+      recurring_interval: form.recurringInterval || 'none',
       account_id: accountId,
     }])
     setForm(EMPTY_JOB_FORM)
@@ -204,9 +200,7 @@ export default function CustomerDetail() {
   }
 
   async function advanceStatus(job) {
-    const next = nextStatus(job.status)
-    if (!next) return
-    await supabase.from('jobs').update({ status: next, updated_at: new Date().toISOString() }).eq('id', job.id)
+    await advanceJobStatus({ ...job, customers: customer }, { accountId })
     loadData()
   }
 
@@ -250,6 +244,7 @@ export default function CustomerDetail() {
     await supabase.from('jobs').update({
       stripe_payment_link_id: data.payment_link_id,
       stripe_payment_link_url: data.payment_link_url,
+      invoice_sent_at: new Date().toISOString(),
     }).eq('id', job.id)
     loadData()
   }
@@ -449,6 +444,14 @@ export default function CustomerDetail() {
             {technicians.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
+          </select>
+
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            Repeat
+          </label>
+          <select value={form.recurringInterval}
+            onChange={(e) => setForm({ ...form, recurringInterval: e.target.value })}>
+            {RECURRING_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
 
           <textarea placeholder="Notes" value={form.notes}

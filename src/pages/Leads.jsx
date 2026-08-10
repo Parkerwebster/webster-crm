@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
+import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -24,9 +25,10 @@ const EMPTY_QUOTE = {
   endTime: '',
   notes: '',
   technicianId: '',
+  recurringInterval: 'none',
 }
 
-const EMPTY_LEAD_FORM = { name: '', phone: '', email: '', address: '', source: '', referral_name: '', message: '' }
+const EMPTY_LEAD_FORM = { name: '', phone: '', email: '', address: '', source: '', referral_name: '', message: '', follow_up_date: '' }
 
 function leadToEditForm(lead) {
   return {
@@ -37,6 +39,7 @@ function leadToEditForm(lead) {
     source: lead.source || '',
     referral_name: lead.referral_name || '',
     message: lead.message || '',
+    follow_up_date: lead.follow_up_date || '',
   }
 }
 
@@ -78,7 +81,7 @@ export default function Leads() {
 
   async function handleAddLead(e) {
     e.preventDefault()
-    await supabase.from('leads').insert([{ ...form, account_id: accountId }])
+    await supabase.from('leads').insert([{ ...form, follow_up_date: form.follow_up_date || null, account_id: accountId }])
     setForm(EMPTY_LEAD_FORM)
     setShowForm(false)
     loadLeads()
@@ -99,6 +102,7 @@ export default function Leads() {
       source: editForm.source,
       referral_name: editForm.source === 'Referral' ? editForm.referral_name : null,
       message: editForm.message,
+      follow_up_date: editForm.follow_up_date || null,
     }).eq('id', lead.id)
     setEditingLeadId(null)
     setEditForm(null)
@@ -189,6 +193,7 @@ export default function Leads() {
         end_time: quoteForm.endTime || null,
         notes: quoteForm.notes,
         technician_id: quoteForm.technicianId || null,
+        recurring_interval: quoteForm.recurringInterval || 'none',
         account_id: accountId,
       }])
       .select()
@@ -239,6 +244,12 @@ export default function Leads() {
               onChange={(e) => setForm({ ...form, referral_name: e.target.value })} />
           )}
 
+          <label htmlFor="add-follow-up" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            Follow up on
+          </label>
+          <input id="add-follow-up" type="date" value={form.follow_up_date}
+            onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })} />
+
           <textarea placeholder="Notes" value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })} />
           <button type="submit">Save Lead</button>
@@ -277,6 +288,12 @@ export default function Leads() {
                       onChange={(e) => setEditForm({ ...editForm, referral_name: e.target.value })} />
                   )}
 
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Follow up on
+                  </label>
+                  <input type="date" value={editForm.follow_up_date}
+                    onChange={(e) => setEditForm({ ...editForm, follow_up_date: e.target.value })} />
+
                   <textarea placeholder="Notes" value={editForm.message}
                     onChange={(e) => setEditForm({ ...editForm, message: e.target.value })} />
 
@@ -298,6 +315,9 @@ export default function Leads() {
                       </span>
                     )}
                     {lead.message && <p className="card-notes">{lead.message}</p>}
+                    {lead.follow_up_date && (
+                      <span className="muted">Follow up {new Date(lead.follow_up_date + 'T00:00:00').toLocaleDateString()}</span>
+                    )}
                     <span className="card-date">
                       {new Date(lead.created_at).toLocaleDateString()}
                     </span>
@@ -371,6 +391,14 @@ export default function Leads() {
                     {technicians.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
+                  </select>
+
+                  <label htmlFor={`repeat-${lead.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                    Repeat
+                  </label>
+                  <select id={`repeat-${lead.id}`} value={quoteForm.recurringInterval}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, recurringInterval: e.target.value })}>
+                    {RECURRING_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                   </select>
 
                   <textarea placeholder="Notes" value={quoteForm.notes}

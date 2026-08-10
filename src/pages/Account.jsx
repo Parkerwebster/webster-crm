@@ -21,11 +21,27 @@ export default function Account() {
   const [stripeError, setStripeError] = useState('')
   const [savingStripe, setSavingStripe] = useState(false)
 
+  const [reviewUrl, setReviewUrl] = useState('')
+  const [reviewStatus, setReviewStatus] = useState('')
+  const [savingReview, setSavingReview] = useState(false)
+
   useEffect(() => {
     if (!accountId) return
-    supabase.from('accounts').select('stripe_connected').eq('id', accountId).single()
-      .then(({ data }) => setStripeConnected(!!data?.stripe_connected))
+    supabase.from('accounts').select('stripe_connected, google_review_url').eq('id', accountId).single()
+      .then(({ data }) => {
+        setStripeConnected(!!data?.stripe_connected)
+        setReviewUrl(data?.google_review_url || '')
+      })
   }, [accountId])
+
+  async function handleSaveReviewUrl(e) {
+    e.preventDefault()
+    setReviewStatus('')
+    setSavingReview(true)
+    const { error } = await supabase.from('accounts').update({ google_review_url: reviewUrl.trim() || null }).eq('id', accountId)
+    setSavingReview(false)
+    setReviewStatus(error ? 'Failed to save.' : 'Saved!')
+  }
 
   async function handleSaveStripe(e) {
     e.preventDefault()
@@ -172,6 +188,25 @@ export default function Account() {
           {stripeStatus && <p style={{ color: 'var(--green)', margin: 0, fontSize: '0.85rem' }}>{stripeStatus}</p>}
           <button type="submit" disabled={savingStripe}>
             {savingStripe ? 'Saving...' : 'Save Stripe Key'}
+          </button>
+        </form>
+      </div>
+
+      <div className="card" style={{ maxWidth: 420, marginTop: 20 }}>
+        <p style={{ marginTop: 0 }}><strong>Google Review Link</strong></p>
+        <p className="muted" style={{ fontSize: '0.85rem' }}>
+          When a customer pays their invoice, we'll ask them to leave a review at this link.
+        </p>
+        <form onSubmit={handleSaveReviewUrl} className="form-grid" style={{ marginBottom: 0 }}>
+          <input
+            type="url"
+            placeholder="https://g.page/r/.../review"
+            value={reviewUrl}
+            onChange={(e) => setReviewUrl(e.target.value)}
+          />
+          {reviewStatus && <p style={{ color: 'var(--green)', margin: 0, fontSize: '0.85rem' }}>{reviewStatus}</p>}
+          <button type="submit" disabled={savingReview}>
+            {savingReview ? 'Saving...' : 'Save Review Link'}
           </button>
         </form>
       </div>

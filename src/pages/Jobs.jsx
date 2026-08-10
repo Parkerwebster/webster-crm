@@ -5,19 +5,13 @@ import { buildQuoteEmail } from '../lib/quoteEmail'
 import { formatTimeRange } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
+import { nextStatus, advanceJobStatus } from '../lib/jobLifecycle'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'unpaid', label: 'Unpaid' },
   { key: 'all', label: 'All' },
 ]
-
-const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
-
-function nextStatus(status) {
-  const idx = STATUS_FLOW.indexOf(status)
-  return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null
-}
 
 export default function Jobs() {
   const { accountId } = useAccount()
@@ -42,9 +36,7 @@ export default function Jobs() {
   }, [])
 
   async function advanceStatus(job) {
-    const next = nextStatus(job.status)
-    if (!next) return
-    await supabase.from('jobs').update({ status: next, updated_at: new Date().toISOString() }).eq('id', job.id)
+    await advanceJobStatus(job, { accountId })
     loadJobs()
   }
 
@@ -83,6 +75,7 @@ export default function Jobs() {
     await supabase.from('jobs').update({
       stripe_payment_link_id: data.payment_link_id,
       stripe_payment_link_url: data.payment_link_url,
+      invoice_sent_at: new Date().toISOString(),
     }).eq('id', job.id)
     loadJobs()
   }

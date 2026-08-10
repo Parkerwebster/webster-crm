@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { formatTime, formatTimeRange } from '../lib/format'
 import { useAccount } from '../context/AccountContext'
+import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -23,6 +24,7 @@ const EMPTY_SCHEDULE_FORM = {
   endTime: '',
   notes: '',
   technicianId: '',
+  recurringInterval: 'none',
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -154,6 +156,7 @@ export default function Calendar() {
       notes: form.notes,
       status: 'scheduled',
       technician_id: form.technicianId || null,
+      recurring_interval: form.recurringInterval || 'none',
       account_id: accountId,
     }])
 
@@ -319,6 +322,14 @@ export default function Calendar() {
                 {technicians.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
+              </select>
+
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Repeat
+              </label>
+              <select value={form.recurringInterval}
+                onChange={(e) => setForm({ ...form, recurringInterval: e.target.value })}>
+                {RECURRING_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
 
               <textarea placeholder="Notes" value={form.notes}
