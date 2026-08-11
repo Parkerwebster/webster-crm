@@ -303,12 +303,12 @@ export default function Calendar() {
               <div className="form-row">
                 <div className="form-field">
                   <label htmlFor="cal-start-time">Start</label>
-                  <input id="cal-start-time" type="time" value={form.startTime}
+                  <input id="cal-start-time" type="time" step="900" value={form.startTime}
                     onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
                 </div>
                 <div className="form-field">
                   <label htmlFor="cal-end-time">End</label>
-                  <input id="cal-end-time" type="time" value={form.endTime}
+                  <input id="cal-end-time" type="time" step="900" value={form.endTime}
                     onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
                 </div>
               </div>

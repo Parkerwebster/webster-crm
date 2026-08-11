@@ -372,12 +372,12 @@ export default function Leads() {
                   <div className="form-row">
                     <div className="form-field">
                       <label htmlFor={`start-${lead.id}`}>Start Time</label>
-                      <input id={`start-${lead.id}`} type="time" value={quoteForm.startTime}
+                      <input id={`start-${lead.id}`} type="time" step="900" value={quoteForm.startTime}
                         onChange={(e) => setQuoteForm({ ...quoteForm, startTime: e.target.value })} />
                     </div>
                     <div className="form-field">
                       <label htmlFor={`end-${lead.id}`}>End Time</label>
-                      <input id={`end-${lead.id}`} type="time" value={quoteForm.endTime}
+                      <input id={`end-${lead.id}`} type="time" step="900" value={quoteForm.endTime}
                         onChange={(e) => setQuoteForm({ ...quoteForm, endTime: e.target.value })} />
                     </div>
                   </div>

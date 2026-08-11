@@ -425,12 +425,12 @@ export default function CustomerDetail() {
           <div className="form-row">
             <div className="form-field">
               <label htmlFor="job-start-time">Start Time</label>
-              <input id="job-start-time" type="time" value={form.startTime}
+              <input id="job-start-time" type="time" step="900" value={form.startTime}
                 onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
             </div>
             <div className="form-field">
               <label htmlFor="job-end-time">End Time</label>
-              <input id="job-end-time" type="time" value={form.endTime}
+              <input id="job-end-time" type="time" step="900" value={form.endTime}
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
             </div>
           </div>
@@ -496,12 +496,12 @@ export default function CustomerDetail() {
                   <div className="form-row">
                     <div className="form-field">
                       <label htmlFor={`edit-start-${job.id}`}>Start Time</label>
-                      <input id={`edit-start-${job.id}`} type="time" value={editForm.startTime}
+                      <input id={`edit-start-${job.id}`} type="time" step="900" value={editForm.startTime}
                         onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })} />
                     </div>
                     <div className="form-field">
                       <label htmlFor={`edit-end-${job.id}`}>End Time</label>
-                      <input id={`edit-end-${job.id}`} type="time" value={editForm.endTime}
+                      <input id={`edit-end-${job.id}`} type="time" step="900" value={editForm.endTime}
                         onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })} />
                     </div>
                   </div>
