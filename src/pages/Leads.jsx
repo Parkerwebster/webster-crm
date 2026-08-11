@@ -5,6 +5,7 @@ import { buildQuoteEmail } from '../lib/quoteEmail'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
+import { TIME_OPTIONS } from '../lib/format'
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -372,13 +373,19 @@ export default function Leads() {
                   <div className="form-row">
                     <div className="form-field">
                       <label htmlFor={`start-${lead.id}`}>Start Time</label>
-                      <input id={`start-${lead.id}`} type="time" step="900" value={quoteForm.startTime}
-                        onChange={(e) => setQuoteForm({ ...quoteForm, startTime: e.target.value })} />
+                      <select id={`start-${lead.id}`} value={quoteForm.startTime}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, startTime: e.target.value })}>
+                        <option value="">--:-- --</option>
+                        {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
                     </div>
                     <div className="form-field">
                       <label htmlFor={`end-${lead.id}`}>End Time</label>
-                      <input id={`end-${lead.id}`} type="time" step="900" value={quoteForm.endTime}
-                        onChange={(e) => setQuoteForm({ ...quoteForm, endTime: e.target.value })} />
+                      <select id={`end-${lead.id}`} value={quoteForm.endTime}
+                        onChange={(e) => setQuoteForm({ ...quoteForm, endTime: e.target.value })}>
+                        <option value="">--:-- --</option>
+                        {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
                     </div>
                   </div>
 

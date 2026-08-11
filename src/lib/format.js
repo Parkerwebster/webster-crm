@@ -6,6 +6,14 @@ export function formatTime(timeStr) {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`
 }
 
+export const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
+  const totalMinutes = i * 15
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  return { value, label: formatTime(value) }
+})
+
 export function formatTimeRange(startTime, endTime) {
   if (!startTime && !endTime) return ''
   if (startTime && endTime) {

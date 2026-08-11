@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
-import { formatTimeRange } from '../lib/format'
+import { formatTimeRange, TIME_OPTIONS } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { nextStatus, advanceJobStatus, RECURRING_OPTIONS } from '../lib/jobLifecycle'
@@ -425,13 +425,19 @@ export default function CustomerDetail() {
           <div className="form-row">
             <div className="form-field">
               <label htmlFor="job-start-time">Start Time</label>
-              <input id="job-start-time" type="time" step="900" value={form.startTime}
-                onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+              <select id="job-start-time" value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })}>
+                <option value="">--:-- --</option>
+                {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </div>
             <div className="form-field">
               <label htmlFor="job-end-time">End Time</label>
-              <input id="job-end-time" type="time" step="900" value={form.endTime}
-                onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+              <select id="job-end-time" value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}>
+                <option value="">--:-- --</option>
+                {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </div>
           </div>
 
@@ -496,13 +502,19 @@ export default function CustomerDetail() {
                   <div className="form-row">
                     <div className="form-field">
                       <label htmlFor={`edit-start-${job.id}`}>Start Time</label>
-                      <input id={`edit-start-${job.id}`} type="time" step="900" value={editForm.startTime}
-                        onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })} />
+                      <select id={`edit-start-${job.id}`} value={editForm.startTime}
+                        onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}>
+                        <option value="">--:-- --</option>
+                        {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
                     </div>
                     <div className="form-field">
                       <label htmlFor={`edit-end-${job.id}`}>End Time</label>
-                      <input id={`edit-end-${job.id}`} type="time" step="900" value={editForm.endTime}
-                        onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })} />
+                      <select id={`edit-end-${job.id}`} value={editForm.endTime}
+                        onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })}>
+                        <option value="">--:-- --</option>
+                        {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
                     </div>
                   </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { formatTime, formatTimeRange } from '../lib/format'
+import { formatTime, formatTimeRange, TIME_OPTIONS } from '../lib/format'
 import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
 
@@ -303,13 +303,19 @@ export default function Calendar() {
               <div className="form-row">
                 <div className="form-field">
                   <label htmlFor="cal-start-time">Start</label>
-                  <input id="cal-start-time" type="time" step="900" value={form.startTime}
-                    onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+                  <select id="cal-start-time" value={form.startTime}
+                    onChange={(e) => setForm({ ...form, startTime: e.target.value })}>
+                    <option value="">--:-- --</option>
+                    {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
                 </div>
                 <div className="form-field">
                   <label htmlFor="cal-end-time">End</label>
-                  <input id="cal-end-time" type="time" step="900" value={form.endTime}
-                    onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+                  <select id="cal-end-time" value={form.endTime}
+                    onChange={(e) => setForm({ ...form, endTime: e.target.value })}>
+                    <option value="">--:-- --</option>
+                    {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
                 </div>
               </div>
 
