@@ -1,0 +1,13 @@
+{
+  "name": "Webster CRM",
+  "short_name": "WEC CRM",
+  "description": "Manage leads, jobs, and invoices for Webster Exterior Cleaning.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4fafd",
+  "theme_color": "#0b3556",
+  "icons": [
+    { "src": "/icon.png", "sizes": "1066x1066", "type": "image/png", "purpose": "any" }
+  ]
+}
