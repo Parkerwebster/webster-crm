@@ -202,6 +202,12 @@ a { color: var(--blue-700); }
 }
 .form-grid button { align-self: flex-start; }
 
+.service-lines { display: flex; flex-direction: column; gap: 8px; margin: 4px 0; }
+.service-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.service-line select { flex: 2 1 200px; }
+.service-line input { flex: 1 1 120px; }
+.service-line-remove { align-self: center; padding: 6px 10px; }
+
 .search-input { width: 100%; max-width: 320px; margin-bottom: 16px; }
 
 /* Cards */

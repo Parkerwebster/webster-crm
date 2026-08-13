@@ -4,22 +4,14 @@ import { supabase } from '../lib/supabaseClient'
 import { formatTime, formatTimeRange, TIME_OPTIONS } from '../lib/format'
 import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
-
-const WINDOW_TYPES = [
-  'Window Cleaning (Exterior Only)',
-  'Window Cleaning (Interior and Exterior)',
-]
-
-const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
+import { emptyServiceLine, combineServiceLines } from '../lib/services'
+import ServiceLineItems from '../components/ServiceLineItems'
 
 const EMPTY_SCHEDULE_FORM = {
   mode: 'customer',
   customerId: '',
   leadId: '',
-  windowType: WINDOW_TYPES[0],
-  windowPrice: '',
-  tracksOption: TRACKS_OPTIONS[0],
-  tracksPrice: '',
+  serviceLines: [emptyServiceLine()],
   startTime: '',
   endTime: '',
   notes: '',
@@ -168,10 +160,7 @@ export default function Calendar() {
       return
     }
 
-    const hasTracks = form.tracksOption !== 'None'
-    const serviceType = hasTracks ? `${form.windowType} + ${form.tracksOption}` : form.windowType
-    const total = (form.windowPrice ? Number(form.windowPrice) : 0)
-      + (hasTracks && form.tracksPrice ? Number(form.tracksPrice) : 0)
+    const { serviceType, total } = combineServiceLines(form.serviceLines)
 
     await supabase.from('jobs').insert([{
       customer_id: customerId,
@@ -381,26 +370,10 @@ export default function Calendar() {
               )}
 
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                Window Cleaning
+                Services
               </label>
-              <select value={form.windowType}
-                onChange={(e) => setForm({ ...form, windowType: e.target.value })}>
-                {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input type="number" step="0.01" placeholder="Window Cleaning Price ($)" value={form.windowPrice}
-                onChange={(e) => setForm({ ...form, windowPrice: e.target.value })} />
-
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                Tracks &amp; Screens
-              </label>
-              <select value={form.tracksOption}
-                onChange={(e) => setForm({ ...form, tracksOption: e.target.value })}>
-                {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              {form.tracksOption !== 'None' && (
-                <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={form.tracksPrice}
-                  onChange={(e) => setForm({ ...form, tracksPrice: e.target.value })} />
-              )}
+              <ServiceLineItems lines={form.serviceLines}
+                onChange={(lines) => setForm({ ...form, serviceLines: lines })} />
 
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
                 Time (optional)

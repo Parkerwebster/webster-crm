@@ -7,6 +7,8 @@ import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
 import { TIME_OPTIONS } from '../lib/format'
 import { exportToCsv } from '../lib/csv'
+import { emptyServiceLine, combineServiceLines } from '../lib/services'
+import ServiceLineItems from '../components/ServiceLineItems'
 
 const LEAD_CSV_COLUMNS = [
   { label: 'Name', value: (l) => l.name },
@@ -20,20 +22,10 @@ const LEAD_CSV_COLUMNS = [
   { label: 'Added', value: (l) => l.created_at ? new Date(l.created_at).toLocaleDateString() : '' },
 ]
 
-const WINDOW_TYPES = [
-  'Window Cleaning (Exterior Only)',
-  'Window Cleaning (Interior and Exterior)',
-]
-
-const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
-
 const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
 
 const EMPTY_QUOTE = {
-  windowType: WINDOW_TYPES[0],
-  windowPrice: '',
-  tracksOption: TRACKS_OPTIONS[0],
-  tracksPrice: '',
+  serviceLines: [emptyServiceLine()],
   scheduled_date: '',
   startTime: '',
   endTime: '',
@@ -171,10 +163,7 @@ export default function Leads() {
     e.preventDefault()
     setBusyId(lead.id)
 
-    const hasTracks = quoteForm.tracksOption !== 'None'
-    const serviceType = hasTracks ? `${quoteForm.windowType} + ${quoteForm.tracksOption}` : quoteForm.windowType
-    const total = (quoteForm.windowPrice ? Number(quoteForm.windowPrice) : 0)
-      + (hasTracks && quoteForm.tracksPrice ? Number(quoteForm.tracksPrice) : 0)
+    const { serviceType, total } = combineServiceLines(quoteForm.serviceLines)
 
     const { data: customer, error: customerError } = await supabase
       .from('customers')
@@ -364,26 +353,10 @@ export default function Leads() {
               {quoteLeadId === lead.id && (
                 <form className="form-grid" style={{ marginTop: 16 }} onSubmit={(e) => handleCreateQuote(e, lead)}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                    Window Cleaning
+                    Services
                   </label>
-                  <select value={quoteForm.windowType}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, windowType: e.target.value })}>
-                    {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <input type="number" step="0.01" placeholder="Window Cleaning Price ($)" value={quoteForm.windowPrice}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, windowPrice: e.target.value })} />
-
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                    Tracks &amp; Screens
-                  </label>
-                  <select value={quoteForm.tracksOption}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, tracksOption: e.target.value })}>
-                    {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  {quoteForm.tracksOption !== 'None' && (
-                    <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={quoteForm.tracksPrice}
-                      onChange={(e) => setQuoteForm({ ...quoteForm, tracksPrice: e.target.value })} />
-                  )}
+                  <ServiceLineItems lines={quoteForm.serviceLines}
+                    onChange={(lines) => setQuoteForm({ ...quoteForm, serviceLines: lines })} />
 
                   <input type="date" value={quoteForm.scheduled_date}
                     onChange={(e) => setQuoteForm({ ...quoteForm, scheduled_date: e.target.value })} />

@@ -6,33 +6,19 @@ import { formatTimeRange, TIME_OPTIONS } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { nextStatus, advanceJobStatus, RECURRING_OPTIONS } from '../lib/jobLifecycle'
-
-const WINDOW_TYPES = [
-  'Window Cleaning (Exterior Only)',
-  'Window Cleaning (Interior and Exterior)',
-]
-
-const TRACKS_OPTIONS = ['None', 'Screen Cleaning', 'Screen Cleaning and Deep Track Cleaning']
+import { emptyServiceLine, combineServiceLines, serviceLinesFromJob } from '../lib/services'
+import ServiceLineItems from '../components/ServiceLineItems'
 
 const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
 
 const EMPTY_JOB_FORM = {
-  windowType: WINDOW_TYPES[0],
-  windowPrice: '',
-  tracksOption: TRACKS_OPTIONS[0],
-  tracksPrice: '',
+  serviceLines: [emptyServiceLine()],
   scheduled_date: '',
   startTime: '',
   endTime: '',
   notes: '',
   technicianId: '',
   recurringInterval: 'none',
-}
-
-function parseServiceType(serviceType) {
-  const windowType = WINDOW_TYPES.find((t) => serviceType?.startsWith(t)) || WINDOW_TYPES[0]
-  const tracksOption = TRACKS_OPTIONS.find((t) => t !== 'None' && serviceType?.includes(t)) || 'None'
-  return { windowType, tracksOption }
 }
 
 function photoUrl(path) {
@@ -51,11 +37,8 @@ function customerToInfoForm(customer) {
 }
 
 function jobToEditForm(job) {
-  const { windowType, tracksOption } = parseServiceType(job.service_type)
   return {
-    windowType,
-    tracksOption,
-    price: job.price != null ? String(job.price) : '',
+    serviceLines: serviceLinesFromJob(job),
     scheduled_date: job.scheduled_date || '',
     startTime: job.start_time ? job.start_time.slice(0, 5) : '',
     endTime: job.end_time ? job.end_time.slice(0, 5) : '',
@@ -106,10 +89,7 @@ export default function CustomerDetail() {
   async function handleAddJob(e) {
     e.preventDefault()
 
-    const hasTracks = form.tracksOption !== 'None'
-    const serviceType = hasTracks ? `${form.windowType} + ${form.tracksOption}` : form.windowType
-    const total = (form.windowPrice ? Number(form.windowPrice) : 0)
-      + (hasTracks && form.tracksPrice ? Number(form.tracksPrice) : 0)
+    const { serviceType, total } = combineServiceLines(form.serviceLines)
 
     await supabase.from('jobs').insert([{
       customer_id: id,
@@ -180,12 +160,11 @@ export default function CustomerDetail() {
   async function handleUpdateJob(e, job) {
     e.preventDefault()
 
-    const hasTracks = editForm.tracksOption !== 'None'
-    const serviceType = hasTracks ? `${editForm.windowType} + ${editForm.tracksOption}` : editForm.windowType
+    const { serviceType, total } = combineServiceLines(editForm.serviceLines)
 
     await supabase.from('jobs').update({
       service_type: serviceType,
-      price: editForm.price ? Number(editForm.price) : null,
+      price: total > 0 ? total : null,
       scheduled_date: editForm.scheduled_date || null,
       start_time: editForm.startTime || null,
       end_time: editForm.endTime || null,
@@ -398,26 +377,10 @@ export default function CustomerDetail() {
       {showForm && (
         <form className="card form-grid" onSubmit={handleAddJob}>
           <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-            Window Cleaning
+            Services
           </label>
-          <select value={form.windowType}
-            onChange={(e) => setForm({ ...form, windowType: e.target.value })}>
-            {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <input type="number" step="0.01" placeholder="Window Cleaning Price ($)" value={form.windowPrice}
-            onChange={(e) => setForm({ ...form, windowPrice: e.target.value })} />
-
-          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-            Tracks &amp; Screens
-          </label>
-          <select value={form.tracksOption}
-            onChange={(e) => setForm({ ...form, tracksOption: e.target.value })}>
-            {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          {form.tracksOption !== 'None' && (
-            <input type="number" step="0.01" placeholder="Tracks & Screens Price ($)" value={form.tracksPrice}
-              onChange={(e) => setForm({ ...form, tracksPrice: e.target.value })} />
-          )}
+          <ServiceLineItems lines={form.serviceLines}
+            onChange={(lines) => setForm({ ...form, serviceLines: lines })} />
 
           <input type="date" value={form.scheduled_date}
             onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} />
@@ -475,26 +438,10 @@ export default function CustomerDetail() {
               {editingJobId === job.id ? (
                 <form className="form-grid" style={{ marginBottom: 0 }} onSubmit={(e) => handleUpdateJob(e, job)}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                    Window Cleaning
+                    Services
                   </label>
-                  <select value={editForm.windowType}
-                    onChange={(e) => setEditForm({ ...editForm, windowType: e.target.value })}>
-                    {WINDOW_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                    Tracks &amp; Screens
-                  </label>
-                  <select value={editForm.tracksOption}
-                    onChange={(e) => setEditForm({ ...editForm, tracksOption: e.target.value })}>
-                    {TRACKS_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-
-                  <label htmlFor={`price-${job.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-                    Total Price ($)
-                  </label>
-                  <input id={`price-${job.id}`} type="number" step="0.01" placeholder="Total Price ($)" value={editForm.price}
-                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+                  <ServiceLineItems lines={editForm.serviceLines}
+                    onChange={(lines) => setEditForm({ ...editForm, serviceLines: lines })} />
 
                   <input type="date" value={editForm.scheduled_date}
                     onChange={(e) => setEditForm({ ...editForm, scheduled_date: e.target.value })} />
