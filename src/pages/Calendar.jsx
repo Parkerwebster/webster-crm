@@ -169,7 +169,7 @@ export default function Calendar() {
   const todayKey = toDateKey(today)
 
   return (
-    <div>
+    <div className="calendar-page">
       <div className="page-header">
         <h1>Calendar</h1>
         <div className="card-actions">

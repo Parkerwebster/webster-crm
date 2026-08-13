@@ -179,6 +179,7 @@ a { color: var(--blue-700); }
   padding: 32px 40px;
   max-width: 1000px;
 }
+.content:has(.calendar-page) { max-width: none; }
 
 .page-header {
   display: flex;
