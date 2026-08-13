@@ -1,6 +1,8 @@
-import { SERVICE_OPTIONS, emptyServiceLine } from '../lib/services'
+import { SERVICE_OPTIONS, emptyServiceLine, combineServiceLines } from '../lib/services'
 
 export default function ServiceLineItems({ lines, onChange }) {
+  const { total } = combineServiceLines(lines)
+
   function updateLine(id, patch) {
     onChange(lines.map((l) => (l.id === id ? { ...l, ...patch } : l)))
   }
@@ -45,6 +47,10 @@ export default function ServiceLineItems({ lines, onChange }) {
         </div>
       ))}
       <button type="button" className="btn-secondary" onClick={addLine}>+ Add Service</button>
+      <div className="service-lines-total">
+        <span>Total</span>
+        <strong>${total.toFixed(2)}</strong>
+      </div>
     </div>
   )
 }

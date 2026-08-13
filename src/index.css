@@ -207,6 +207,16 @@ a { color: var(--blue-700); }
 .service-line select { flex: 2 1 200px; }
 .service-line input { flex: 1 1 120px; }
 .service-line-remove { align-self: center; padding: 6px 10px; }
+.service-lines-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  color: var(--blue-900);
+}
+.service-lines-total strong { font-size: 1.1rem; }
 
 .search-input { width: 100%; max-width: 320px; margin-bottom: 16px; }
 
