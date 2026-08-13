@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { formatTime, formatTimeRange, TIME_OPTIONS } from '../lib/format'
@@ -33,6 +33,17 @@ function toDateKey(date) {
   return date.toLocaleDateString('en-CA') // YYYY-MM-DD, local time
 }
 
+function timeToMinutes(t) {
+  if (!t) return null
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+const HOURS = Array.from({ length: 24 }, (_, h) => ({
+  h,
+  label: formatTime(`${String(h).padStart(2, '0')}:00`),
+}))
+
 function buildMonthGrid(year, month) {
   const firstOfMonth = new Date(year, month, 1)
   const startOffset = firstOfMonth.getDay()
@@ -59,6 +70,8 @@ export default function Calendar() {
   const [scheduleDate, setScheduleDate] = useState(null)
   const [form, setForm] = useState(EMPTY_SCHEDULE_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(today)
+  const dayScrollRef = useRef(null)
 
   async function loadData() {
     setLoading(true)
@@ -88,6 +101,16 @@ export default function Calendar() {
     }
     return map
   }, [jobs])
+
+  const selectedDayJobs = jobsByDate[toDateKey(selectedDate)] ?? []
+  const timedJobs = selectedDayJobs.filter((j) => j.start_time)
+  const untimedJobs = selectedDayJobs.filter((j) => !j.start_time)
+
+  useEffect(() => {
+    if (dayScrollRef.current) {
+      dayScrollRef.current.scrollTop = 7 * 60 - 20
+    }
+  }, [selectedDate, loading])
 
   const days = useMemo(
     () => buildMonthGrid(viewDate.getFullYear(), viewDate.getMonth()),
@@ -194,12 +217,13 @@ export default function Calendar() {
             const dayJobs = jobsByDate[key] ?? []
             return (
               <div
-                className={`calendar-day${inMonth ? '' : ' calendar-day-muted'}${key === todayKey ? ' calendar-day-today' : ''}`}
+                className={`calendar-day${inMonth ? '' : ' calendar-day-muted'}${key === todayKey ? ' calendar-day-today' : ''}${key === toDateKey(selectedDate) ? ' calendar-day-selected' : ''}`}
                 key={key}
+                onClick={() => setSelectedDate(date)}
               >
                 <div className="calendar-day-top">
                   <span>{date.getDate()}</span>
-                  <button className="calendar-add-btn" onClick={() => openSchedule(date)}>+</button>
+                  <button className="calendar-add-btn" onClick={(e) => { e.stopPropagation(); openSchedule(date) }}>+</button>
                 </div>
                 <div className="calendar-day-jobs">
                   {dayJobs.map((job) => (
@@ -220,6 +244,68 @@ export default function Calendar() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="card day-schedule">
+          <div className="page-header">
+            <h2 style={{ margin: 0 }}>
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </h2>
+            <button className="btn-secondary" onClick={() => openSchedule(selectedDate)}>+ Schedule Job</button>
+          </div>
+
+          {untimedJobs.length > 0 && (
+            <div className="day-schedule-untimed">
+              {untimedJobs.map((job) => (
+                <Link
+                  to={`/customers/${job.customers?.id}`}
+                  key={job.id}
+                  className={`calendar-job-chip status-${job.status}`}
+                >
+                  {job.customers?.name ?? 'Unknown'} — {job.service_type}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <div className="day-schedule-scroll" ref={dayScrollRef}>
+            <div className="day-schedule-row">
+              <div className="day-schedule-hours">
+                {HOURS.map((hour) => (
+                  <div className="day-schedule-hour-label" key={hour.h} style={{ top: hour.h * 60 }}>
+                    {hour.label}
+                  </div>
+                ))}
+              </div>
+              <div className="day-schedule-slots">
+                {HOURS.map((hour) => (
+                  <div className="day-schedule-hour-line" key={hour.h} style={{ top: hour.h * 60 }} />
+                ))}
+                {timedJobs.map((job) => {
+                  const startMin = timeToMinutes(job.start_time)
+                  const endMin = job.end_time ? timeToMinutes(job.end_time) : startMin + 30
+                  const height = Math.max(endMin - startMin, 20)
+                  return (
+                    <Link
+                      to={`/customers/${job.customers?.id}`}
+                      key={job.id}
+                      className={`day-schedule-job status-${job.status}`}
+                      style={{ top: startMin, height }}
+                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.technicians ? ` — ${job.technicians.name}` : ''}`}
+                    >
+                      {job.technicians && (
+                        <span className="calendar-job-chip-tech" style={{ background: job.technicians.color }} />
+                      )}
+                      <strong>{formatTimeRange(job.start_time, job.end_time)}</strong>
+                      {' '}{job.customers?.name ?? 'Unknown'}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

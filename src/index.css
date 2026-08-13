@@ -357,6 +357,7 @@ a { color: var(--blue-700); }
   border: 1px solid var(--line);
   border-radius: 8px;
   min-height: 100px;
+  min-width: 0;
   padding: 6px;
   display: flex;
   flex-direction: column;
@@ -404,11 +405,73 @@ a { color: var(--blue-700); }
 .calendar-job-chip.status-invoiced { background: #fdf3e0; color: var(--amber); }
 .calendar-job-chip.status-paid { background: #e5f7ea; color: var(--green); }
 .calendar-job-chip-time { font-weight: 700; }
+.calendar-day { cursor: pointer; }
+.calendar-day-selected { box-shadow: 0 0 0 2px var(--blue-700) inset; }
 
 @media (max-width: 800px) {
   .calendar-day { min-height: 70px; font-size: 0.8rem; }
   .calendar-day-label { font-size: 0.7rem; }
 }
+
+/* Day schedule */
+.day-schedule { margin-top: 24px; }
+.day-schedule-untimed { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.day-schedule-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.day-schedule-row { display: flex; }
+.day-schedule-hours {
+  position: relative;
+  width: 64px;
+  flex-shrink: 0;
+  height: 1440px;
+  border-right: 1px solid var(--line);
+}
+.day-schedule-hour-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  padding: 0 8px;
+  text-align: right;
+}
+.day-schedule-slots {
+  position: relative;
+  flex: 1;
+  height: 1440px;
+  background-image: repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent 15px);
+}
+.day-schedule-hour-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--ink-soft);
+  opacity: 0.25;
+}
+.day-schedule-job {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  background: var(--blue-100);
+  border-left: 3px solid var(--blue-700);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  color: var(--blue-900);
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.day-schedule-job.status-completed { background: #e8f6ec; border-left-color: var(--green); }
+.day-schedule-job.status-invoiced { background: #fdf3e0; border-left-color: var(--amber); }
+.day-schedule-job.status-paid { background: #e5f7ea; border-left-color: var(--green); }
 
 /* Quote email modal */
 .modal-overlay {
