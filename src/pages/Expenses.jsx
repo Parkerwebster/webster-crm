@@ -14,6 +14,29 @@ const CATEGORY_OPTIONS = [
   'Other',
 ]
 
+const RECURRENCE_OPTIONS = [
+  { value: 'one_time', label: 'One-time' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+]
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
+]
+
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1)
+
 function emptyForm() {
   return {
     description: '',
@@ -21,7 +44,23 @@ function emptyForm() {
     amount: '',
     expense_date: new Date().toISOString().slice(0, 10),
     notes: '',
+    recurrence: 'one_time',
+    recurrence_day: 1,
+    recurrence_month: 1,
   }
+}
+
+function formatRecurrence(exp) {
+  if (exp.recurrence === 'monthly') return `Monthly · Day ${exp.recurrence_day}`
+  if (exp.recurrence === 'yearly') {
+    const monthLabel = MONTH_OPTIONS.find((m) => m.value === exp.recurrence_month)?.label ?? ''
+    return `Yearly · ${monthLabel} ${exp.recurrence_day}`
+  }
+  return null
+}
+
+function receiptUrl(path) {
+  return supabase.storage.from('expense-receipts').getPublicUrl(path).data.publicUrl
 }
 
 const EXPENSE_CSV_COLUMNS = [
@@ -29,21 +68,74 @@ const EXPENSE_CSV_COLUMNS = [
   { label: 'Description', value: (e) => e.description },
   { label: 'Category', value: (e) => e.category },
   { label: 'Amount', value: (e) => e.amount },
+  { label: 'Recurrence', value: (e) => RECURRENCE_OPTIONS.find((r) => r.value === e.recurrence)?.label ?? '' },
+  { label: 'Recurrence Day', value: (e) => e.recurrence_day },
+  { label: 'Recurrence Month', value: (e) => e.recurrence_month ? MONTH_OPTIONS.find((m) => m.value === e.recurrence_month)?.label : '' },
   { label: 'Notes', value: (e) => e.notes },
 ]
+
+function ExpenseCard({ exp, receipts, dateLabel, busy, uploading, onDelete, onUpload, onPhotoClick }) {
+  return (
+    <div className="card" key={exp.id}>
+      <div className="card-main">
+        <strong>{exp.description}</strong>
+        <span className="muted">{exp.category}</span>
+        <span>${Number(exp.amount).toFixed(2)}</span>
+        {dateLabel}
+        {exp.notes && <p className="card-notes">{exp.notes}</p>}
+      </div>
+
+      {receipts.length > 0 && (
+        <div className="photo-grid">
+          {receipts.map((photo) => (
+            <img
+              key={photo.id}
+              src={receiptUrl(photo.storage_path)}
+              alt=""
+              className="photo-thumb"
+              onClick={() => onPhotoClick(photo)}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="card-actions">
+        <label className="btn-file">
+          {uploading ? 'Uploading...' : '+ Add Receipt'}
+          <input type="file" accept="image/*" multiple hidden disabled={uploading} onChange={(e) => onUpload(exp.id, e)} />
+        </label>
+        <button className="btn-secondary" disabled={busy} onClick={() => onDelete(exp)}>
+          Delete
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function Expenses() {
   const { accountId } = useAccount()
   const [expenses, setExpenses] = useState([])
+  const [receiptsByExpense, setReceiptsByExpense] = useState({})
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [busyId, setBusyId] = useState(null)
+  const [uploadingId, setUploadingId] = useState(null)
+  const [lightboxPhoto, setLightboxPhoto] = useState(null)
 
   async function loadExpenses() {
     setLoading(true)
-    const { data } = await supabase.from('expenses').select('*').order('expense_date', { ascending: false })
-    setExpenses(data ?? [])
+    const [{ data: expenseData }, { data: receiptData }] = await Promise.all([
+      supabase.from('expenses').select('*').order('expense_date', { ascending: false }),
+      supabase.from('expense_receipts').select('*').order('created_at', { ascending: false }),
+    ])
+    setExpenses(expenseData ?? [])
+    const grouped = {}
+    for (const receipt of receiptData ?? []) {
+      if (!grouped[receipt.expense_id]) grouped[receipt.expense_id] = []
+      grouped[receipt.expense_id].push(receipt)
+    }
+    setReceiptsByExpense(grouped)
     setLoading(false)
   }
 
@@ -59,6 +151,9 @@ export default function Expenses() {
       amount: Number(form.amount) || 0,
       expense_date: form.expense_date,
       notes: form.notes || null,
+      recurrence: form.recurrence,
+      recurrence_day: form.recurrence !== 'one_time' ? Number(form.recurrence_day) : null,
+      recurrence_month: form.recurrence === 'yearly' ? Number(form.recurrence_month) : null,
       account_id: accountId,
     }])
     setForm(emptyForm())
@@ -74,17 +169,50 @@ export default function Expenses() {
     loadExpenses()
   }
 
+  async function handleUploadReceipt(expenseId, e) {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setUploadingId(expenseId)
+    for (const file of files) {
+      const path = `${expenseId}/${crypto.randomUUID()}-${file.name}`
+      const { error: uploadError } = await supabase.storage.from('expense-receipts').upload(path, file)
+      if (!uploadError) {
+        await supabase.from('expense_receipts').insert([{ expense_id: expenseId, storage_path: path, account_id: accountId }])
+      }
+    }
+    e.target.value = ''
+    setUploadingId(null)
+    loadExpenses()
+  }
+
+  async function deleteReceipt(photo) {
+    if (!window.confirm('Delete this receipt photo?')) return
+    await supabase.storage.from('expense-receipts').remove([photo.storage_path])
+    await supabase.from('expense_receipts').delete().eq('id', photo.id)
+    setLightboxPhoto(null)
+    loadExpenses()
+  }
+
+  const oneTimeExpenses = expenses.filter((e) => e.recurrence === 'one_time')
+  const recurringExpenses = expenses.filter((e) => e.recurrence !== 'one_time')
+  const monthlyRecurring = recurringExpenses.filter((e) => e.recurrence === 'monthly')
+  const yearlyRecurring = recurringExpenses.filter((e) => e.recurrence === 'yearly')
+
   const today = new Date()
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-  const totals = expenses.reduce(
-    (acc, exp) => {
-      const amount = Number(exp.amount) || 0
-      acc.allTime += amount
-      if (new Date(exp.expense_date + 'T00:00:00') >= monthStart) acc.month += amount
-      return acc
-    },
-    { month: 0, allTime: 0 }
-  )
+  const currentMonth = today.getMonth() + 1
+
+  const oneTimeThisMonth = oneTimeExpenses
+    .filter((e) => new Date(e.expense_date + 'T00:00:00') >= monthStart)
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const monthlyRecurringTotal = monthlyRecurring.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const yearlyRecurringTotal = yearlyRecurring.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const yearlyDueThisMonth = yearlyRecurring
+    .filter((e) => e.recurrence_month === currentMonth)
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+
+  const thisMonthTotal = oneTimeThisMonth + monthlyRecurringTotal + yearlyDueThisMonth
+  const allTimeTotal = oneTimeExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
 
   return (
     <div>
@@ -105,12 +233,20 @@ export default function Expenses() {
 
       <div className="stat-grid">
         <div className="stat-card">
-          <span className="stat-value">${totals.month.toFixed(2)}</span>
+          <span className="stat-value">${thisMonthTotal.toFixed(2)}</span>
           <span className="stat-label">This Month</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">${totals.allTime.toFixed(2)}</span>
-          <span className="stat-label">All Time</span>
+          <span className="stat-value">${allTimeTotal.toFixed(2)}</span>
+          <span className="stat-label">All Time (one-time)</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">${monthlyRecurringTotal.toFixed(2)}</span>
+          <span className="stat-label">Monthly Recurring</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">${yearlyRecurringTotal.toFixed(2)}</span>
+          <span className="stat-label">Yearly Recurring</span>
         </div>
       </div>
 
@@ -130,7 +266,36 @@ export default function Expenses() {
             onChange={(e) => setForm({ ...form, amount: e.target.value })} />
 
           <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-            Date
+            Recurrence
+          </label>
+          <select value={form.recurrence} onChange={(e) => setForm({ ...form, recurrence: e.target.value })}>
+            {RECURRENCE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+
+          {form.recurrence === 'yearly' && (
+            <>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Month
+              </label>
+              <select value={form.recurrence_month} onChange={(e) => setForm({ ...form, recurrence_month: e.target.value })}>
+                {MONTH_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </>
+          )}
+
+          {form.recurrence !== 'one_time' && (
+            <>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Day of {form.recurrence === 'yearly' ? 'Month' : 'Month it Recurs'}
+              </label>
+              <select value={form.recurrence_day} onChange={(e) => setForm({ ...form, recurrence_day: e.target.value })}>
+                {DAY_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </>
+          )}
+
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+            {form.recurrence === 'one_time' ? 'Date' : 'Start Date'}
           </label>
           <input type="date" required value={form.expense_date}
             onChange={(e) => setForm({ ...form, expense_date: e.target.value })} />
@@ -144,26 +309,63 @@ export default function Expenses() {
 
       {loading ? (
         <p>Loading...</p>
-      ) : expenses.length === 0 ? (
-        <p className="empty-state">No expenses logged yet.</p>
       ) : (
-        <div className="card-list">
-          {expenses.map((exp) => (
-            <div className="card" key={exp.id}>
-              <div className="card-main">
-                <strong>{exp.description}</strong>
-                <span className="muted">{exp.category}</span>
-                <span>${Number(exp.amount).toFixed(2)}</span>
-                <span className="card-date">{new Date(exp.expense_date + 'T00:00:00').toLocaleDateString()}</span>
-                {exp.notes && <p className="card-notes">{exp.notes}</p>}
+        <>
+          {recurringExpenses.length > 0 && (
+            <section>
+              <h2>Recurring Expenses</h2>
+              <div className="card-list">
+                {recurringExpenses.map((exp) => (
+                  <ExpenseCard
+                    key={exp.id}
+                    exp={exp}
+                    receipts={receiptsByExpense[exp.id] ?? []}
+                    dateLabel={<span className="calendar-job-chip">{formatRecurrence(exp)}</span>}
+                    busy={busyId === exp.id}
+                    uploading={uploadingId === exp.id}
+                    onDelete={deleteExpense}
+                    onUpload={handleUploadReceipt}
+                    onPhotoClick={setLightboxPhoto}
+                  />
+                ))}
               </div>
-              <div className="card-actions">
-                <button className="btn-secondary" disabled={busyId === exp.id} onClick={() => deleteExpense(exp)}>
-                  Delete
-                </button>
+            </section>
+          )}
+
+          <section>
+            <h2>One-Time Expenses</h2>
+            {oneTimeExpenses.length === 0 ? (
+              <p className="empty-state">No one-time expenses logged yet.</p>
+            ) : (
+              <div className="card-list">
+                {oneTimeExpenses.map((exp) => (
+                  <ExpenseCard
+                    key={exp.id}
+                    exp={exp}
+                    receipts={receiptsByExpense[exp.id] ?? []}
+                    dateLabel={<span className="card-date">{new Date(exp.expense_date + 'T00:00:00').toLocaleDateString()}</span>}
+                    busy={busyId === exp.id}
+                    uploading={uploadingId === exp.id}
+                    onDelete={deleteExpense}
+                    onUpload={handleUploadReceipt}
+                    onPhotoClick={setLightboxPhoto}
+                  />
+                ))}
               </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {lightboxPhoto && (
+        <div className="modal-overlay" onClick={() => setLightboxPhoto(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <img src={receiptUrl(lightboxPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <div className="card-actions">
+              <button className="btn-secondary" onClick={() => setLightboxPhoto(null)}>Close</button>
+              <button className="btn-secondary" onClick={() => deleteReceipt(lightboxPhoto)}>Delete</button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>
