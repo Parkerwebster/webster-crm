@@ -31,6 +31,7 @@ export default function Layout() {
             <NavLink to="/calendar">Calendar</NavLink>
             <NavLink to="/door-knocking">Door Knocking</NavLink>
             <NavLink to="/technicians">Technicians</NavLink>
+            <NavLink to="/expenses">Expenses</NavLink>
             <NavLink to="/account">Account</NavLink>
           </nav>
           <div className="sidebar-footer">

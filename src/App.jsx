@@ -10,6 +10,7 @@ import Jobs from './pages/Jobs'
 import Calendar from './pages/Calendar'
 import DoorKnockMap from './pages/DoorKnockMap'
 import Technicians from './pages/Technicians'
+import Expenses from './pages/Expenses'
 import Account from './pages/Account'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="door-knocking" element={<DoorKnockMap />} />
         <Route path="technicians" element={<Technicians />} />
+        <Route path="expenses" element={<Expenses />} />
         <Route path="account" element={<Account />} />
       </Route>
     </Routes>
