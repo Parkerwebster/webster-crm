@@ -246,7 +246,6 @@ export default function DoorKnockMap() {
     <div>
       <div className="page-header">
         <h1>Door Knocking Map</h1>
-        <button className="btn-secondary" onClick={locateMe}>Locate Me</button>
       </div>
 
       <div className="map-range-tabs">
@@ -323,6 +322,10 @@ export default function DoorKnockMap() {
       <p className="map-hint">
         {loading ? 'Loading your pins...' : 'Tap anywhere on the map to drop a pin for the house you\'re at. Tap an existing pin to update or delete it.'}
       </p>
+
+      <div className="map-controls">
+        <button className="btn-secondary" onClick={locateMe}>Locate Me</button>
+      </div>
 
       <div className="map-wrap">
         <MapContainer

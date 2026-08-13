@@ -472,6 +472,7 @@ a { color: var(--blue-700); }
 
 /* Door Knocking Map */
 .map-hint { color: var(--ink-soft); font-size: 0.85rem; margin: 0 0 12px; }
+.map-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; }
 .map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ink-soft); }
 .map-legend-dot {
