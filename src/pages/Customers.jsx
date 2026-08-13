@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAccount } from '../context/AccountContext'
+import { exportToCsv } from '../lib/csv'
+
+const CUSTOMER_CSV_COLUMNS = [
+  { label: 'Name', value: (c) => c.name },
+  { label: 'Phone', value: (c) => c.phone },
+  { label: 'Email', value: (c) => c.email },
+  { label: 'Address', value: (c) => c.address },
+  { label: 'Source', value: (c) => c.source },
+  { label: 'Referral Name', value: (c) => c.referral_name },
+  { label: 'Notes', value: (c) => c.notes },
+  { label: 'Added', value: (c) => c.created_at ? new Date(c.created_at).toLocaleDateString() : '' },
+]
 
 const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
 
@@ -43,13 +55,20 @@ export default function Customers() {
     (c.address ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
+  function handleExportCsv() {
+    exportToCsv(`customers-${new Date().toISOString().slice(0, 10)}.csv`, filtered, CUSTOMER_CSV_COLUMNS)
+  }
+
   return (
     <div>
       <div className="page-header">
         <h1>Customers</h1>
-        <button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : '+ Add Customer'}
-        </button>
+        <div className="card-actions">
+          <button className="btn-secondary" onClick={handleExportCsv}>Export CSV</button>
+          <button onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Cancel' : '+ Add Customer'}
+          </button>
+        </div>
       </div>
 
       {showForm && (

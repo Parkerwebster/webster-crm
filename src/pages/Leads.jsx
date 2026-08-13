@@ -6,6 +6,19 @@ import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
 import { TIME_OPTIONS } from '../lib/format'
+import { exportToCsv } from '../lib/csv'
+
+const LEAD_CSV_COLUMNS = [
+  { label: 'Name', value: (l) => l.name },
+  { label: 'Phone', value: (l) => l.phone },
+  { label: 'Email', value: (l) => l.email },
+  { label: 'Address', value: (l) => l.address },
+  { label: 'Source', value: (l) => l.source },
+  { label: 'Referral Name', value: (l) => l.referral_name },
+  { label: 'Message', value: (l) => l.message },
+  { label: 'Follow Up Date', value: (l) => l.follow_up_date },
+  { label: 'Added', value: (l) => l.created_at ? new Date(l.created_at).toLocaleDateString() : '' },
+]
 
 const WINDOW_TYPES = [
   'Window Cleaning (Exterior Only)',
@@ -216,9 +229,14 @@ export default function Leads() {
     <div>
       <div className="page-header">
         <h1>Leads</h1>
-        <button onClick={() => { setShowForm((v) => !v); setForm(EMPTY_LEAD_FORM) }}>
-          {showForm ? 'Cancel' : '+ Add Lead'}
-        </button>
+        <div className="card-actions">
+          <button className="btn-secondary" onClick={() => exportToCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, leads, LEAD_CSV_COLUMNS)}>
+            Export CSV
+          </button>
+          <button onClick={() => { setShowForm((v) => !v); setForm(EMPTY_LEAD_FORM) }}>
+            {showForm ? 'Cancel' : '+ Add Lead'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
