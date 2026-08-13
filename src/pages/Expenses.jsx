@@ -50,6 +50,19 @@ function emptyForm() {
   }
 }
 
+function expenseToEditForm(exp) {
+  return {
+    description: exp.description || '',
+    category: exp.category || CATEGORY_OPTIONS[0],
+    amount: exp.amount != null ? String(exp.amount) : '',
+    expense_date: exp.expense_date || new Date().toISOString().slice(0, 10),
+    notes: exp.notes || '',
+    recurrence: exp.recurrence || 'one_time',
+    recurrence_day: exp.recurrence_day || 1,
+    recurrence_month: exp.recurrence_month || 1,
+  }
+}
+
 function formatRecurrence(exp) {
   if (exp.recurrence === 'monthly') return `Monthly · Day ${exp.recurrence_day}`
   if (exp.recurrence === 'yearly') {
@@ -74,7 +87,73 @@ const EXPENSE_CSV_COLUMNS = [
   { label: 'Notes', value: (e) => e.notes },
 ]
 
-function ExpenseCard({ exp, receipts, dateLabel, busy, uploading, onDelete, onUpload, onPhotoClick }) {
+function ExpenseCard({
+  exp, receipts, dateLabel, busy, uploading,
+  isEditing, editForm, onEditFormChange, onStartEdit, onSaveEdit, onCancelEdit,
+  onDelete, onUpload, onPhotoClick,
+}) {
+  if (isEditing) {
+    return (
+      <form className="card form-grid" style={{ marginBottom: 12 }} onSubmit={onSaveEdit}>
+        <input placeholder="Description" required value={editForm.description}
+          onChange={(e) => onEditFormChange({ ...editForm, description: e.target.value })} />
+
+        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+          Category
+        </label>
+        <select value={editForm.category} onChange={(e) => onEditFormChange({ ...editForm, category: e.target.value })}>
+          {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <input type="number" step="0.01" placeholder="Amount ($)" required value={editForm.amount}
+          onChange={(e) => onEditFormChange({ ...editForm, amount: e.target.value })} />
+
+        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+          Recurrence
+        </label>
+        <select value={editForm.recurrence} onChange={(e) => onEditFormChange({ ...editForm, recurrence: e.target.value })}>
+          {RECURRENCE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+
+        {editForm.recurrence === 'yearly' && (
+          <>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+              Month
+            </label>
+            <select value={editForm.recurrence_month} onChange={(e) => onEditFormChange({ ...editForm, recurrence_month: e.target.value })}>
+              {MONTH_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </>
+        )}
+
+        {editForm.recurrence !== 'one_time' && (
+          <>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+              Day of {editForm.recurrence === 'yearly' ? 'Month' : 'Month it Recurs'}
+            </label>
+            <select value={editForm.recurrence_day} onChange={(e) => onEditFormChange({ ...editForm, recurrence_day: e.target.value })}>
+              {DAY_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </>
+        )}
+
+        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+          {editForm.recurrence === 'one_time' ? 'Date' : 'Start Date'}
+        </label>
+        <input type="date" required value={editForm.expense_date}
+          onChange={(e) => onEditFormChange({ ...editForm, expense_date: e.target.value })} />
+
+        <textarea placeholder="Notes" value={editForm.notes}
+          onChange={(e) => onEditFormChange({ ...editForm, notes: e.target.value })} />
+
+        <div className="card-actions">
+          <button type="submit">Save Changes</button>
+          <button type="button" className="btn-secondary" onClick={onCancelEdit}>Cancel</button>
+        </div>
+      </form>
+    )
+  }
+
   return (
     <div className="card" key={exp.id}>
       <div className="card-main">
@@ -104,6 +183,9 @@ function ExpenseCard({ exp, receipts, dateLabel, busy, uploading, onDelete, onUp
           {uploading ? 'Uploading...' : '+ Add Receipt'}
           <input type="file" accept="image/*" multiple hidden disabled={uploading} onChange={(e) => onUpload(exp.id, e)} />
         </label>
+        <button className="btn-secondary" disabled={busy} onClick={() => onStartEdit(exp)}>
+          Edit
+        </button>
         <button className="btn-secondary" disabled={busy} onClick={() => onDelete(exp)}>
           Delete
         </button>
@@ -122,6 +204,8 @@ export default function Expenses() {
   const [busyId, setBusyId] = useState(null)
   const [uploadingId, setUploadingId] = useState(null)
   const [lightboxPhoto, setLightboxPhoto] = useState(null)
+  const [editingExpenseId, setEditingExpenseId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
 
   async function loadExpenses() {
     setLoading(true)
@@ -158,6 +242,33 @@ export default function Expenses() {
     }])
     setForm(emptyForm())
     setShowForm(false)
+    loadExpenses()
+  }
+
+  function startEditExpense(expense) {
+    setEditingExpenseId(expense.id)
+    setEditForm(expenseToEditForm(expense))
+  }
+
+  function cancelEditExpense() {
+    setEditingExpenseId(null)
+    setEditForm(null)
+  }
+
+  async function handleUpdateExpense(e) {
+    e.preventDefault()
+    await supabase.from('expenses').update({
+      description: editForm.description,
+      category: editForm.category,
+      amount: Number(editForm.amount) || 0,
+      expense_date: editForm.expense_date,
+      notes: editForm.notes || null,
+      recurrence: editForm.recurrence,
+      recurrence_day: editForm.recurrence !== 'one_time' ? Number(editForm.recurrence_day) : null,
+      recurrence_month: editForm.recurrence === 'yearly' ? Number(editForm.recurrence_month) : null,
+    }).eq('id', editingExpenseId)
+    setEditingExpenseId(null)
+    setEditForm(null)
     loadExpenses()
   }
 
@@ -323,6 +434,12 @@ export default function Expenses() {
                     dateLabel={<span className="calendar-job-chip">{formatRecurrence(exp)}</span>}
                     busy={busyId === exp.id}
                     uploading={uploadingId === exp.id}
+                    isEditing={editingExpenseId === exp.id}
+                    editForm={editForm}
+                    onEditFormChange={setEditForm}
+                    onStartEdit={startEditExpense}
+                    onSaveEdit={handleUpdateExpense}
+                    onCancelEdit={cancelEditExpense}
                     onDelete={deleteExpense}
                     onUpload={handleUploadReceipt}
                     onPhotoClick={setLightboxPhoto}
@@ -346,6 +463,12 @@ export default function Expenses() {
                     dateLabel={<span className="card-date">{new Date(exp.expense_date + 'T00:00:00').toLocaleDateString()}</span>}
                     busy={busyId === exp.id}
                     uploading={uploadingId === exp.id}
+                    isEditing={editingExpenseId === exp.id}
+                    editForm={editForm}
+                    onEditFormChange={setEditForm}
+                    onStartEdit={startEditExpense}
+                    onSaveEdit={handleUpdateExpense}
+                    onCancelEdit={cancelEditExpense}
                     onDelete={deleteExpense}
                     onUpload={handleUploadReceipt}
                     onPhotoClick={setLightboxPhoto}
