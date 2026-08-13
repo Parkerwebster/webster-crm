@@ -464,14 +464,29 @@ a { color: var(--blue-700); }
   padding: 2px 8px;
   font-size: 0.78rem;
   color: var(--blue-900);
-  text-decoration: none;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: flex;
+  flex-direction: column;
 }
 .day-schedule-job.status-completed { background: #e8f6ec; border-left-color: var(--green); }
 .day-schedule-job.status-invoiced { background: #fdf3e0; border-left-color: var(--amber); }
 .day-schedule-job.status-paid { background: #e5f7ea; border-left-color: var(--green); }
+.day-schedule-job-main {
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.day-schedule-job-address {
+  font-size: 0.7rem;
+  color: var(--blue-700);
+  text-decoration: underline;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.day-schedule-job-address:hover { color: var(--blue-900); }
 
 /* Quote email modal */
 .modal-overlay {

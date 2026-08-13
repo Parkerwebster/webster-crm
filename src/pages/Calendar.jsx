@@ -33,6 +33,10 @@ function toDateKey(date) {
   return date.toLocaleDateString('en-CA') // YYYY-MM-DD, local time
 }
 
+function mapsUrl(address) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
+}
+
 function timeToMinutes(t) {
   if (!t) return null
   const [h, m] = t.split(':').map(Number)
@@ -288,19 +292,34 @@ export default function Calendar() {
                   const endMin = job.end_time ? timeToMinutes(job.end_time) : startMin + 30
                   const height = Math.max(endMin - startMin, 20)
                   return (
-                    <Link
-                      to={`/customers/${job.customers?.id}`}
+                    <div
                       key={job.id}
                       className={`day-schedule-job status-${job.status}`}
                       style={{ top: startMin, height }}
-                      title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.technicians ? ` — ${job.technicians.name}` : ''}`}
                     >
-                      {job.technicians && (
-                        <span className="calendar-job-chip-tech" style={{ background: job.technicians.color }} />
+                      <Link
+                        to={`/customers/${job.customers?.id}`}
+                        className="day-schedule-job-main"
+                        title={`${job.customers?.name ?? 'Unknown'} — ${job.service_type}${job.technicians ? ` — ${job.technicians.name}` : ''}`}
+                      >
+                        {job.technicians && (
+                          <span className="calendar-job-chip-tech" style={{ background: job.technicians.color }} />
+                        )}
+                        <strong>{formatTimeRange(job.start_time, job.end_time)}</strong>
+                        {' '}{job.customers?.name ?? 'Unknown'}
+                      </Link>
+                      {job.customers?.address && (
+                        <a
+                          href={mapsUrl(job.customers.address)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="day-schedule-job-address"
+                          title={`Get directions to ${job.customers.address}`}
+                        >
+                          {job.customers.address}
+                        </a>
                       )}
-                      <strong>{formatTimeRange(job.start_time, job.end_time)}</strong>
-                      {' '}{job.customers?.name ?? 'Unknown'}
-                    </Link>
+                    </div>
                   )
                 })}
               </div>
