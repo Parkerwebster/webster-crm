@@ -29,7 +29,9 @@ export async function advanceJobStatus(job, { accountId } = {}) {
   const next = nextStatus(job.status)
   if (!next) return null
 
-  await supabase.from('jobs').update({ status: next, updated_at: new Date().toISOString() }).eq('id', job.id)
+  const updates = { status: next, updated_at: new Date().toISOString() }
+  if (next === 'paid') updates.paid_at = new Date().toISOString()
+  await supabase.from('jobs').update(updates).eq('id', job.id)
 
   const customerId = job.customer_id || job.customers?.id
 

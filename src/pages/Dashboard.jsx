@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [overdueInvoices, setOverdueInvoices] = useState([])
   const [followUps, setFollowUps] = useState([])
   const [remindingId, setRemindingId] = useState(null)
+  const [revenue, setRevenue] = useState({ today: 0, month: 0, allTime: 0 })
 
   async function load() {
     setLoading(true)
@@ -44,6 +45,7 @@ export default function Dashboard() {
       { data: dueData },
       { data: overdueData },
       { data: followUpData },
+      { data: paidData },
     ] = await Promise.all([
       supabase
         .from('jobs')
@@ -78,6 +80,7 @@ export default function Dashboard() {
         .not('follow_up_date', 'is', null)
         .lte('follow_up_date', todayStr)
         .order('follow_up_date', { ascending: true }),
+      supabase.from('jobs').select('price, paid_at').eq('status', 'paid'),
     ])
 
     setUpcomingJobs(jobsData ?? [])
@@ -88,6 +91,24 @@ export default function Dashboard() {
     setDueForService(dueData ?? [])
     setOverdueInvoices(overdueData ?? [])
     setFollowUps(followUpData ?? [])
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const revenueTotals = (paidData ?? []).reduce(
+      (acc, job) => {
+        const amount = Number(job.price) || 0
+        acc.allTime += amount
+        if (job.paid_at) {
+          const paidDate = new Date(job.paid_at)
+          if (paidDate >= monthStart) acc.month += amount
+          if (paidDate >= todayStart) acc.today += amount
+        }
+        return acc
+      },
+      { today: 0, month: 0, allTime: 0 }
+    )
+    setRevenue(revenueTotals)
+
     setLoading(false)
   }
 
@@ -126,6 +147,22 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <h1>Dashboard</h1>
+      </div>
+
+      <h2 style={{ marginTop: 0 }}>Revenue</h2>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <span className="stat-value">${revenue.today.toFixed(2)}</span>
+          <span className="stat-label">Today</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">${revenue.month.toFixed(2)}</span>
+          <span className="stat-label">This Month</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">${revenue.allTime.toFixed(2)}</span>
+          <span className="stat-label">All Time</span>
+        </div>
       </div>
 
       <div className="stat-grid">
