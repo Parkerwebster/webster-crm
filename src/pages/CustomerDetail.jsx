@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
-import { formatTimeRange, TIME_OPTIONS } from '../lib/format'
+import { formatTimeRange, formatTimestamp, TIME_OPTIONS } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { nextStatus, advanceJobStatus, RECURRING_OPTIONS } from '../lib/jobLifecycle'
@@ -78,14 +78,17 @@ export default function CustomerDetail() {
   const [editingInfo, setEditingInfo] = useState(false)
   const [infoForm, setInfoForm] = useState(null)
   const [sendingInvoiceId, setSendingInvoiceId] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [statusEvents, setStatusEvents] = useState([])
 
   async function loadData() {
     setLoading(true)
-    const [{ data: customerData }, { data: jobsData }, { data: techData }, { data: photosData }] = await Promise.all([
+    const [{ data: customerData }, { data: jobsData }, { data: techData }, { data: photosData }, { data: eventsData }] = await Promise.all([
       supabase.from('customers').select('*').eq('id', id).single(),
       supabase.from('jobs').select('*, technicians(id, name, color)').eq('customer_id', id).order('created_at', { ascending: false }),
       supabase.from('technicians').select('*').eq('active', true).order('name'),
       supabase.from('customer_photos').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+      supabase.from('job_status_events').select('*, jobs(service_type)').eq('customer_id', id).order('occurred_at', { ascending: false }),
     ])
 
     const jobIds = (jobsData ?? []).map((j) => j.id)
@@ -103,6 +106,7 @@ export default function CustomerDetail() {
     setTechnicians(techData ?? [])
     setPhotos(photosData ?? [])
     setJobPhotosByJob(groupedJobPhotos)
+    setStatusEvents(eventsData ?? [])
     setLoading(false)
   }
 
@@ -321,6 +325,37 @@ export default function CustomerDetail() {
         </div>
       </div>
 
+      <div className="tab-bar">
+        <button type="button" className={activeTab === 'overview' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('overview')}>
+          Overview
+        </button>
+        <button type="button" className={activeTab === 'activity' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('activity')}>
+          Activity Log
+        </button>
+      </div>
+
+      {activeTab === 'activity' ? (
+        <section>
+          {statusEvents.length === 0 ? (
+            <p className="empty-state">No status changes logged yet.</p>
+          ) : (
+            <div className="card-list">
+              {statusEvents.map((ev) => (
+                <div className="card" key={ev.id}>
+                  <div className="card-main">
+                    <span className={`status-badge status-${ev.status}`}>{ev.status}</span>
+                    <span>{ev.jobs?.service_type}</span>
+                    <span className="muted">{formatTimestamp(ev.occurred_at)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+      <>
       {editingInfo ? (
         <form className="card form-grid" onSubmit={handleUpdateInfo}>
           <input placeholder="Phone" value={infoForm.phone}
@@ -394,13 +429,15 @@ export default function CustomerDetail() {
       ) : (
         <div className="photo-grid">
           {photos.map((photo) => (
-            <img
-              key={photo.id}
-              src={photoUrl(photo.storage_path)}
-              alt=""
-              className="photo-thumb"
-              onClick={() => setLightboxPhoto(photo)}
-            />
+            <div className="photo-item" key={photo.id}>
+              <img
+                src={photoUrl(photo.storage_path)}
+                alt=""
+                className="photo-thumb"
+                onClick={() => setLightboxPhoto(photo)}
+              />
+              <span className="photo-timestamp">{formatTimestamp(photo.created_at)}</span>
+            </div>
           ))}
         </div>
       )}
@@ -409,6 +446,7 @@ export default function CustomerDetail() {
         <div className="modal-overlay" onClick={() => setLightboxPhoto(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <img src={photoUrl(lightboxPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <p className="photo-lightbox-timestamp">{formatTimestamp(lightboxPhoto.created_at)}</p>
             <div className="card-actions">
               <button className="btn-secondary" onClick={() => setLightboxPhoto(null)}>Close</button>
               <button className="btn-secondary" onClick={() => deletePhoto(lightboxPhoto)}>Delete</button>
@@ -590,13 +628,15 @@ export default function CustomerDetail() {
                   {(jobPhotosByJob[job.id]?.length > 0) && (
                     <div className="photo-grid">
                       {jobPhotosByJob[job.id].map((photo) => (
-                        <img
-                          key={photo.id}
-                          src={jobPhotoUrl(photo.storage_path)}
-                          alt=""
-                          className="photo-thumb"
-                          onClick={() => setLightboxJobPhoto(photo)}
-                        />
+                        <div className="photo-item" key={photo.id}>
+                          <img
+                            src={jobPhotoUrl(photo.storage_path)}
+                            alt=""
+                            className="photo-thumb"
+                            onClick={() => setLightboxJobPhoto(photo)}
+                          />
+                          <span className="photo-timestamp">{formatTimestamp(photo.created_at)}</span>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -642,6 +682,7 @@ export default function CustomerDetail() {
         <div className="modal-overlay" onClick={() => setLightboxJobPhoto(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <img src={jobPhotoUrl(lightboxJobPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <p className="photo-lightbox-timestamp">{formatTimestamp(lightboxJobPhoto.created_at)}</p>
             <div className="card-actions">
               <button className="btn-secondary" onClick={() => setLightboxJobPhoto(null)}>Close</button>
               <button className="btn-secondary" onClick={() => deleteJobPhoto(lightboxJobPhoto)}>Delete</button>
@@ -652,6 +693,8 @@ export default function CustomerDetail() {
 
       {quoteEmail && (
         <QuoteEmailModal email={quoteEmail} onClose={() => setQuoteEmail(null)} />
+      )}
+      </>
       )}
     </div>
   )

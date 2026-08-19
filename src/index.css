@@ -554,6 +554,7 @@ a { color: var(--blue-700); }
   gap: 10px;
   margin-bottom: 24px;
 }
+.photo-item { display: flex; flex-direction: column; gap: 4px; }
 .photo-thumb {
   width: 100%;
   aspect-ratio: 1;
@@ -563,6 +564,7 @@ a { color: var(--blue-700); }
   cursor: pointer;
   display: block;
 }
+.photo-timestamp { font-size: 0.72rem; color: var(--ink-soft); text-align: center; }
 .photo-lightbox-img {
   max-width: 100%;
   max-height: 70vh;
@@ -570,6 +572,7 @@ a { color: var(--blue-700); }
   margin: 0 auto 16px;
   border-radius: 8px;
 }
+.photo-lightbox-timestamp { text-align: center; color: var(--ink-soft); font-size: 0.85rem; margin: -8px 0 16px; }
 
 /* Technicians */
 .tech-dot {

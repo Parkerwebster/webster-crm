@@ -14,6 +14,17 @@ export const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   return { value, label: formatTime(value) }
 })
 
+export function formatTimestamp(isoString) {
+  if (!isoString) return ''
+  return new Date(isoString).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function formatTimeRange(startTime, endTime) {
   if (!startTime && !endTime) return ''
   if (startTime && endTime) {

@@ -35,6 +35,15 @@ export async function advanceJobStatus(job, { accountId } = {}) {
 
   const customerId = job.customer_id || job.customers?.id
 
+  if (customerId) {
+    await supabase.from('job_status_events').insert([{
+      job_id: job.id,
+      customer_id: customerId,
+      status: next,
+      account_id: accountId,
+    }])
+  }
+
   if (next === 'completed' && job.recurring_interval && job.recurring_interval !== 'none' && customerId) {
     const nextServiceDate = computeNextServiceDate(job.recurring_interval)
     if (nextServiceDate) {

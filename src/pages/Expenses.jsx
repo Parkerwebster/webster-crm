@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAccount } from '../context/AccountContext'
 import { exportToCsv } from '../lib/csv'
+import { formatTimestamp } from '../lib/format'
 
 const CATEGORY_OPTIONS = [
   'Supplies',
@@ -167,13 +168,15 @@ function ExpenseCard({
       {receipts.length > 0 && (
         <div className="photo-grid">
           {receipts.map((photo) => (
-            <img
-              key={photo.id}
-              src={receiptUrl(photo.storage_path)}
-              alt=""
-              className="photo-thumb"
-              onClick={() => onPhotoClick(photo)}
-            />
+            <div className="photo-item" key={photo.id}>
+              <img
+                src={receiptUrl(photo.storage_path)}
+                alt=""
+                className="photo-thumb"
+                onClick={() => onPhotoClick(photo)}
+              />
+              <span className="photo-timestamp">{formatTimestamp(photo.created_at)}</span>
+            </div>
           ))}
         </div>
       )}
@@ -484,6 +487,7 @@ export default function Expenses() {
         <div className="modal-overlay" onClick={() => setLightboxPhoto(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <img src={receiptUrl(lightboxPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <p className="photo-lightbox-timestamp">{formatTimestamp(lightboxPhoto.created_at)}</p>
             <div className="card-actions">
               <button className="btn-secondary" onClick={() => setLightboxPhoto(null)}>Close</button>
               <button className="btn-secondary" onClick={() => deleteReceipt(lightboxPhoto)}>Delete</button>
