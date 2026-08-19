@@ -11,8 +11,13 @@ import ServiceLineItems from '../components/ServiceLineItems'
 
 const SOURCE_OPTIONS = ['Website', 'Door Knocking', 'Referral']
 
+const VISIT_TYPES = ['Touch-up', 'Follow-up Visit', 'Free Walkthrough/Estimate', 'Custom']
+
 const EMPTY_JOB_FORM = {
+  mode: 'job',
   serviceLines: [emptyServiceLine()],
+  visitType: VISIT_TYPES[0],
+  visitTypeCustom: '',
   scheduled_date: '',
   startTime: '',
   endTime: '',
@@ -23,6 +28,10 @@ const EMPTY_JOB_FORM = {
 
 function photoUrl(path) {
   return supabase.storage.from('customer-photos').getPublicUrl(path).data.publicUrl
+}
+
+function jobPhotoUrl(path) {
+  return supabase.storage.from('job-photos').getPublicUrl(path).data.publicUrl
 }
 
 function customerToInfoForm(customer) {
@@ -57,6 +66,9 @@ export default function CustomerDetail() {
   const [photos, setPhotos] = useState([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [lightboxPhoto, setLightboxPhoto] = useState(null)
+  const [jobPhotosByJob, setJobPhotosByJob] = useState({})
+  const [uploadingJobPhotoId, setUploadingJobPhotoId] = useState(null)
+  const [lightboxJobPhoto, setLightboxJobPhoto] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [quoteEmail, setQuoteEmail] = useState(null)
@@ -75,10 +87,22 @@ export default function CustomerDetail() {
       supabase.from('technicians').select('*').eq('active', true).order('name'),
       supabase.from('customer_photos').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
     ])
+
+    const jobIds = (jobsData ?? []).map((j) => j.id)
+    const { data: jobPhotosData } = jobIds.length > 0
+      ? await supabase.from('job_photos').select('*').in('job_id', jobIds).order('created_at', { ascending: false })
+      : { data: [] }
+    const groupedJobPhotos = {}
+    for (const photo of jobPhotosData ?? []) {
+      if (!groupedJobPhotos[photo.job_id]) groupedJobPhotos[photo.job_id] = []
+      groupedJobPhotos[photo.job_id].push(photo)
+    }
+
     setCustomer(customerData)
     setJobs(jobsData ?? [])
     setTechnicians(techData ?? [])
     setPhotos(photosData ?? [])
+    setJobPhotosByJob(groupedJobPhotos)
     setLoading(false)
   }
 
@@ -89,7 +113,9 @@ export default function CustomerDetail() {
   async function handleAddJob(e) {
     e.preventDefault()
 
-    const { serviceType, total } = combineServiceLines(form.serviceLines)
+    const { serviceType, total } = form.mode === 'visit'
+      ? { serviceType: form.visitType === 'Custom' ? (form.visitTypeCustom.trim() || 'Custom') : form.visitType, total: 0 }
+      : combineServiceLines(form.serviceLines)
 
     await supabase.from('jobs').insert([{
       customer_id: id,
@@ -129,6 +155,30 @@ export default function CustomerDetail() {
     await supabase.storage.from('customer-photos').remove([photo.storage_path])
     await supabase.from('customer_photos').delete().eq('id', photo.id)
     setLightboxPhoto(null)
+    loadData()
+  }
+
+  async function handleJobPhotoUpload(jobId, e) {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setUploadingJobPhotoId(jobId)
+    for (const file of files) {
+      const path = `${jobId}/${crypto.randomUUID()}-${file.name}`
+      const { error: uploadError } = await supabase.storage.from('job-photos').upload(path, file)
+      if (!uploadError) {
+        await supabase.from('job_photos').insert([{ job_id: jobId, storage_path: path, account_id: accountId }])
+      }
+    }
+    e.target.value = ''
+    setUploadingJobPhotoId(null)
+    loadData()
+  }
+
+  async function deleteJobPhoto(photo) {
+    if (!window.confirm('Delete this photo?')) return
+    await supabase.storage.from('job-photos').remove([photo.storage_path])
+    await supabase.from('job_photos').delete().eq('id', photo.id)
+    setLightboxJobPhoto(null)
     loadData()
   }
 
@@ -376,11 +426,40 @@ export default function CustomerDetail() {
 
       {showForm && (
         <form className="card form-grid" onSubmit={handleAddJob}>
-          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
-            Services
-          </label>
-          <ServiceLineItems lines={form.serviceLines}
-            onChange={(lines) => setForm({ ...form, serviceLines: lines })} />
+          <div className="tab-bar">
+            <button type="button" className={form.mode === 'job' ? 'tab active' : 'tab'}
+              onClick={() => setForm({ ...form, mode: 'job' })}>
+              Full Job / Quote
+            </button>
+            <button type="button" className={form.mode === 'visit' ? 'tab active' : 'tab'}
+              onClick={() => setForm({ ...form, mode: 'visit' })}>
+              Quick Visit
+            </button>
+          </div>
+
+          {form.mode === 'job' ? (
+            <>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Services
+              </label>
+              <ServiceLineItems lines={form.serviceLines}
+                onChange={(lines) => setForm({ ...form, serviceLines: lines })} />
+            </>
+          ) : (
+            <>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--blue-900)' }}>
+                Visit Type
+              </label>
+              <select value={form.visitType}
+                onChange={(e) => setForm({ ...form, visitType: e.target.value })}>
+                {VISIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              {form.visitType === 'Custom' && (
+                <input placeholder="Describe the visit" value={form.visitTypeCustom}
+                  onChange={(e) => setForm({ ...form, visitTypeCustom: e.target.value })} />
+              )}
+            </>
+          )}
 
           <input type="date" value={form.scheduled_date}
             onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} />
@@ -507,7 +586,28 @@ export default function CustomerDetail() {
                     )}
                     {job.notes && <p className="card-notes">{job.notes}</p>}
                   </div>
+
+                  {(jobPhotosByJob[job.id]?.length > 0) && (
+                    <div className="photo-grid">
+                      {jobPhotosByJob[job.id].map((photo) => (
+                        <img
+                          key={photo.id}
+                          src={jobPhotoUrl(photo.storage_path)}
+                          alt=""
+                          className="photo-thumb"
+                          onClick={() => setLightboxJobPhoto(photo)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <div className="card-actions">
+                    <label className="btn-file">
+                      {uploadingJobPhotoId === job.id ? 'Uploading...' : '+ Add Before Photo'}
+                      <input type="file" accept="image/*" multiple hidden
+                        disabled={uploadingJobPhotoId === job.id}
+                        onChange={(e) => handleJobPhotoUpload(job.id, e)} />
+                    </label>
                     <button className="btn-secondary" onClick={() => startEdit(job)}>Edit</button>
                     <button className="btn-secondary" onClick={() => sendQuote(job)}>Send Quote</button>
                     {job.price != null && (
@@ -535,6 +635,18 @@ export default function CustomerDetail() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {lightboxJobPhoto && (
+        <div className="modal-overlay" onClick={() => setLightboxJobPhoto(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <img src={jobPhotoUrl(lightboxJobPhoto.storage_path)} alt="" className="photo-lightbox-img" />
+            <div className="card-actions">
+              <button className="btn-secondary" onClick={() => setLightboxJobPhoto(null)}>Close</button>
+              <button className="btn-secondary" onClick={() => deleteJobPhoto(lightboxJobPhoto)}>Delete</button>
+            </div>
+          </div>
         </div>
       )}
 
