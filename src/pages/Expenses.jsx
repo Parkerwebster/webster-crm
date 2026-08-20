@@ -77,6 +77,34 @@ function receiptUrl(path) {
   return supabase.storage.from('expense-receipts').getPublicUrl(path).data.publicUrl
 }
 
+function emptyMileageForm() {
+  return {
+    vehicle: '',
+    log_date: new Date().toISOString().slice(0, 10),
+    miles: '',
+    purpose: '',
+    notes: '',
+  }
+}
+
+function mileageToEditForm(log) {
+  return {
+    vehicle: log.vehicle || '',
+    log_date: log.log_date || new Date().toISOString().slice(0, 10),
+    miles: log.miles != null ? String(log.miles) : '',
+    purpose: log.purpose || '',
+    notes: log.notes || '',
+  }
+}
+
+const MILEAGE_CSV_COLUMNS = [
+  { label: 'Date', value: (m) => m.log_date },
+  { label: 'Vehicle', value: (m) => m.vehicle },
+  { label: 'Miles', value: (m) => m.miles },
+  { label: 'Purpose', value: (m) => m.purpose },
+  { label: 'Notes', value: (m) => m.notes },
+]
+
 const EXPENSE_CSV_COLUMNS = [
   { label: 'Date', value: (e) => e.expense_date },
   { label: 'Description', value: (e) => e.description },
@@ -197,6 +225,54 @@ function ExpenseCard({
   )
 }
 
+function MileageCard({ log, isEditing, editForm, onEditFormChange, onStartEdit, onSaveEdit, onCancelEdit, onDelete, busy }) {
+  if (isEditing) {
+    return (
+      <form className="card form-grid" style={{ marginBottom: 12 }} onSubmit={onSaveEdit}>
+        <input placeholder="Vehicle (e.g. Truck, Van)" required list="vehicle-names" value={editForm.vehicle}
+          onChange={(e) => onEditFormChange({ ...editForm, vehicle: e.target.value })} />
+
+        <input type="number" step="0.1" placeholder="Miles" required value={editForm.miles}
+          onChange={(e) => onEditFormChange({ ...editForm, miles: e.target.value })} />
+
+        <input type="date" required value={editForm.log_date}
+          onChange={(e) => onEditFormChange({ ...editForm, log_date: e.target.value })} />
+
+        <input placeholder="Purpose (e.g. Job site visits)" value={editForm.purpose}
+          onChange={(e) => onEditFormChange({ ...editForm, purpose: e.target.value })} />
+
+        <textarea placeholder="Notes" value={editForm.notes}
+          onChange={(e) => onEditFormChange({ ...editForm, notes: e.target.value })} />
+
+        <div className="card-actions">
+          <button type="submit">Save Changes</button>
+          <button type="button" className="btn-secondary" onClick={onCancelEdit}>Cancel</button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <div className="card" key={log.id}>
+      <div className="card-main">
+        <strong>{log.vehicle}</strong>
+        <span>{Number(log.miles).toLocaleString()} mi</span>
+        <span className="card-date">{new Date(log.log_date + 'T00:00:00').toLocaleDateString()}</span>
+        {log.purpose && <span className="muted">{log.purpose}</span>}
+        {log.notes && <p className="card-notes">{log.notes}</p>}
+      </div>
+      <div className="card-actions">
+        <button className="btn-secondary" disabled={busy} onClick={() => onStartEdit(log)}>
+          Edit
+        </button>
+        <button className="btn-secondary" disabled={busy} onClick={() => onDelete(log)}>
+          Delete
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Expenses() {
   const { accountId } = useAccount()
   const [expenses, setExpenses] = useState([])
@@ -209,12 +285,19 @@ export default function Expenses() {
   const [lightboxPhoto, setLightboxPhoto] = useState(null)
   const [editingExpenseId, setEditingExpenseId] = useState(null)
   const [editForm, setEditForm] = useState(null)
+  const [mileageLogs, setMileageLogs] = useState([])
+  const [showMileageForm, setShowMileageForm] = useState(false)
+  const [mileageForm, setMileageForm] = useState(emptyMileageForm())
+  const [busyMileageId, setBusyMileageId] = useState(null)
+  const [editingMileageId, setEditingMileageId] = useState(null)
+  const [editMileageForm, setEditMileageForm] = useState(null)
 
   async function loadExpenses() {
     setLoading(true)
-    const [{ data: expenseData }, { data: receiptData }] = await Promise.all([
+    const [{ data: expenseData }, { data: receiptData }, { data: mileageData }] = await Promise.all([
       supabase.from('expenses').select('*').order('expense_date', { ascending: false }),
       supabase.from('expense_receipts').select('*').order('created_at', { ascending: false }),
+      supabase.from('mileage_logs').select('*').order('log_date', { ascending: false }),
     ])
     setExpenses(expenseData ?? [])
     const grouped = {}
@@ -223,6 +306,7 @@ export default function Expenses() {
       grouped[receipt.expense_id].push(receipt)
     }
     setReceiptsByExpense(grouped)
+    setMileageLogs(mileageData ?? [])
     setLoading(false)
   }
 
@@ -307,6 +391,53 @@ export default function Expenses() {
     loadExpenses()
   }
 
+  async function handleAddMileage(e) {
+    e.preventDefault()
+    await supabase.from('mileage_logs').insert([{
+      vehicle: mileageForm.vehicle,
+      log_date: mileageForm.log_date,
+      miles: Number(mileageForm.miles) || 0,
+      purpose: mileageForm.purpose || null,
+      notes: mileageForm.notes || null,
+      account_id: accountId,
+    }])
+    setMileageForm(emptyMileageForm())
+    setShowMileageForm(false)
+    loadExpenses()
+  }
+
+  function startEditMileage(log) {
+    setEditingMileageId(log.id)
+    setEditMileageForm(mileageToEditForm(log))
+  }
+
+  function cancelEditMileage() {
+    setEditingMileageId(null)
+    setEditMileageForm(null)
+  }
+
+  async function handleUpdateMileage(e) {
+    e.preventDefault()
+    await supabase.from('mileage_logs').update({
+      vehicle: editMileageForm.vehicle,
+      log_date: editMileageForm.log_date,
+      miles: Number(editMileageForm.miles) || 0,
+      purpose: editMileageForm.purpose || null,
+      notes: editMileageForm.notes || null,
+    }).eq('id', editingMileageId)
+    setEditingMileageId(null)
+    setEditMileageForm(null)
+    loadExpenses()
+  }
+
+  async function deleteMileage(log) {
+    if (!window.confirm(`Delete this mileage entry for "${log.vehicle}"? This can't be undone.`)) return
+    setBusyMileageId(log.id)
+    await supabase.from('mileage_logs').delete().eq('id', log.id)
+    setBusyMileageId(null)
+    loadExpenses()
+  }
+
   const oneTimeExpenses = expenses.filter((e) => e.recurrence === 'one_time')
   const recurringExpenses = expenses.filter((e) => e.recurrence !== 'one_time')
   const monthlyRecurring = recurringExpenses.filter((e) => e.recurrence === 'monthly')
@@ -327,6 +458,23 @@ export default function Expenses() {
 
   const thisMonthTotal = oneTimeThisMonth + monthlyRecurringTotal + yearlyDueThisMonth
   const allTimeTotal = oneTimeExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+
+  const mileageThisMonthTotal = mileageLogs
+    .filter((m) => new Date(m.log_date + 'T00:00:00') >= monthStart)
+    .reduce((sum, m) => sum + (Number(m.miles) || 0), 0)
+  const mileageAllTimeTotal = mileageLogs.reduce((sum, m) => sum + (Number(m.miles) || 0), 0)
+
+  const vehicleNames = [...new Set(mileageLogs.map((m) => m.vehicle))].sort()
+  const mileageByVehicle = vehicleNames.map((vehicle) => {
+    const logsForVehicle = mileageLogs.filter((m) => m.vehicle === vehicle)
+    return {
+      vehicle,
+      thisMonth: logsForVehicle
+        .filter((m) => new Date(m.log_date + 'T00:00:00') >= monthStart)
+        .reduce((sum, m) => sum + (Number(m.miles) || 0), 0),
+      allTime: logsForVehicle.reduce((sum, m) => sum + (Number(m.miles) || 0), 0),
+    }
+  })
 
   return (
     <div>
@@ -475,6 +623,91 @@ export default function Expenses() {
                     onDelete={deleteExpense}
                     onUpload={handleUploadReceipt}
                     onPhotoClick={setLightboxPhoto}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="page-header">
+              <h2 style={{ margin: 0 }}>Vehicle Mileage</h2>
+              <div className="card-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={() => exportToCsv(`mileage-${new Date().toISOString().slice(0, 10)}.csv`, mileageLogs, MILEAGE_CSV_COLUMNS)}
+                >
+                  Export CSV
+                </button>
+                <button onClick={() => { setShowMileageForm((v) => !v); setMileageForm(emptyMileageForm()) }}>
+                  {showMileageForm ? 'Cancel' : '+ Log Mileage'}
+                </button>
+              </div>
+            </div>
+
+            <datalist id="vehicle-names">
+              {vehicleNames.map((v) => <option key={v} value={v} />)}
+            </datalist>
+
+            <div className="stat-grid">
+              <div className="stat-card">
+                <span className="stat-value">{mileageThisMonthTotal.toLocaleString()} mi</span>
+                <span className="stat-label">This Month</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-value">{mileageAllTimeTotal.toLocaleString()} mi</span>
+                <span className="stat-label">All Time</span>
+              </div>
+            </div>
+
+            {mileageByVehicle.length > 0 && (
+              <div className="stat-grid">
+                {mileageByVehicle.map((v) => (
+                  <div className="stat-card" key={v.vehicle}>
+                    <span className="stat-value">{v.allTime.toLocaleString()} mi</span>
+                    <span className="stat-label">{v.vehicle} — {v.thisMonth.toLocaleString()} mi this month</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showMileageForm && (
+              <form className="card form-grid" onSubmit={handleAddMileage}>
+                <input placeholder="Vehicle (e.g. Truck, Van)" required list="vehicle-names" value={mileageForm.vehicle}
+                  onChange={(e) => setMileageForm({ ...mileageForm, vehicle: e.target.value })} />
+
+                <input type="number" step="0.1" placeholder="Miles" required value={mileageForm.miles}
+                  onChange={(e) => setMileageForm({ ...mileageForm, miles: e.target.value })} />
+
+                <input type="date" required value={mileageForm.log_date}
+                  onChange={(e) => setMileageForm({ ...mileageForm, log_date: e.target.value })} />
+
+                <input placeholder="Purpose (e.g. Job site visits)" value={mileageForm.purpose}
+                  onChange={(e) => setMileageForm({ ...mileageForm, purpose: e.target.value })} />
+
+                <textarea placeholder="Notes" value={mileageForm.notes}
+                  onChange={(e) => setMileageForm({ ...mileageForm, notes: e.target.value })} />
+
+                <button type="submit">Save Mileage</button>
+              </form>
+            )}
+
+            {mileageLogs.length === 0 ? (
+              <p className="empty-state">No mileage logged yet.</p>
+            ) : (
+              <div className="card-list">
+                {mileageLogs.map((log) => (
+                  <MileageCard
+                    key={log.id}
+                    log={log}
+                    busy={busyMileageId === log.id}
+                    isEditing={editingMileageId === log.id}
+                    editForm={editMileageForm}
+                    onEditFormChange={setEditMileageForm}
+                    onStartEdit={startEditMileage}
+                    onSaveEdit={handleUpdateMileage}
+                    onCancelEdit={cancelEditMileage}
+                    onDelete={deleteMileage}
                   />
                 ))}
               </div>
