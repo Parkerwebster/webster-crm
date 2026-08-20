@@ -291,7 +291,9 @@ export default function Expenses() {
   const [busyMileageId, setBusyMileageId] = useState(null)
   const [editingMileageId, setEditingMileageId] = useState(null)
   const [editMileageForm, setEditMileageForm] = useState(null)
-  const [activeSection, setActiveSection] = useState('mileage')
+  const [activeSection, setActiveSection] = useState('dollar')
+  const [showAllRecurring, setShowAllRecurring] = useState(false)
+  const [showAllOneTime, setShowAllOneTime] = useState(false)
 
   async function loadExpenses() {
     setLoading(true)
@@ -441,6 +443,8 @@ export default function Expenses() {
 
   const oneTimeExpenses = expenses.filter((e) => e.recurrence === 'one_time')
   const recurringExpenses = expenses.filter((e) => e.recurrence !== 'one_time')
+  const visibleRecurring = showAllRecurring ? recurringExpenses : recurringExpenses.slice(0, 3)
+  const visibleOneTime = showAllOneTime ? oneTimeExpenses : oneTimeExpenses.slice(0, 3)
   const monthlyRecurring = recurringExpenses.filter((e) => e.recurrence === 'monthly')
   const yearlyRecurring = recurringExpenses.filter((e) => e.recurrence === 'yearly')
 
@@ -511,13 +515,13 @@ export default function Expenses() {
       </div>
 
       <div className="tab-bar">
-        <button type="button" className={activeSection === 'mileage' ? 'tab active' : 'tab'}
-          onClick={() => setActiveSection('mileage')}>
-          Vehicle Mileage
-        </button>
         <button type="button" className={activeSection === 'dollar' ? 'tab active' : 'tab'}
           onClick={() => setActiveSection('dollar')}>
           Expenses
+        </button>
+        <button type="button" className={activeSection === 'mileage' ? 'tab active' : 'tab'}
+          onClick={() => setActiveSection('mileage')}>
+          Vehicle Mileage
         </button>
       </div>
 
@@ -679,7 +683,7 @@ export default function Expenses() {
             <section>
               <h2>Recurring Expenses</h2>
               <div className="card-list">
-                {recurringExpenses.map((exp) => (
+                {visibleRecurring.map((exp) => (
                   <ExpenseCard
                     key={exp.id}
                     exp={exp}
@@ -699,6 +703,11 @@ export default function Expenses() {
                   />
                 ))}
               </div>
+              {recurringExpenses.length > 3 && (
+                <button className="btn-secondary" onClick={() => setShowAllRecurring((v) => !v)}>
+                  {showAllRecurring ? 'Show Less' : `Show All (${recurringExpenses.length})`}
+                </button>
+              )}
             </section>
           )}
 
@@ -707,27 +716,34 @@ export default function Expenses() {
             {oneTimeExpenses.length === 0 ? (
               <p className="empty-state">No one-time expenses logged yet.</p>
             ) : (
-              <div className="card-list">
-                {oneTimeExpenses.map((exp) => (
-                  <ExpenseCard
-                    key={exp.id}
-                    exp={exp}
-                    receipts={receiptsByExpense[exp.id] ?? []}
-                    dateLabel={<span className="card-date">{new Date(exp.expense_date + 'T00:00:00').toLocaleDateString()}</span>}
-                    busy={busyId === exp.id}
-                    uploading={uploadingId === exp.id}
-                    isEditing={editingExpenseId === exp.id}
-                    editForm={editForm}
-                    onEditFormChange={setEditForm}
-                    onStartEdit={startEditExpense}
-                    onSaveEdit={handleUpdateExpense}
-                    onCancelEdit={cancelEditExpense}
-                    onDelete={deleteExpense}
-                    onUpload={handleUploadReceipt}
-                    onPhotoClick={setLightboxPhoto}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="card-list">
+                  {visibleOneTime.map((exp) => (
+                    <ExpenseCard
+                      key={exp.id}
+                      exp={exp}
+                      receipts={receiptsByExpense[exp.id] ?? []}
+                      dateLabel={<span className="card-date">{new Date(exp.expense_date + 'T00:00:00').toLocaleDateString()}</span>}
+                      busy={busyId === exp.id}
+                      uploading={uploadingId === exp.id}
+                      isEditing={editingExpenseId === exp.id}
+                      editForm={editForm}
+                      onEditFormChange={setEditForm}
+                      onStartEdit={startEditExpense}
+                      onSaveEdit={handleUpdateExpense}
+                      onCancelEdit={cancelEditExpense}
+                      onDelete={deleteExpense}
+                      onUpload={handleUploadReceipt}
+                      onPhotoClick={setLightboxPhoto}
+                    />
+                  ))}
+                </div>
+                {oneTimeExpenses.length > 3 && (
+                  <button className="btn-secondary" onClick={() => setShowAllOneTime((v) => !v)}>
+                    {showAllOneTime ? 'Show Less' : `Show All (${oneTimeExpenses.length})`}
+                  </button>
+                )}
+              </>
             )}
           </section>
         </>
