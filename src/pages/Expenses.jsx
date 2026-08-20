@@ -291,6 +291,7 @@ export default function Expenses() {
   const [busyMileageId, setBusyMileageId] = useState(null)
   const [editingMileageId, setEditingMileageId] = useState(null)
   const [editMileageForm, setEditMileageForm] = useState(null)
+  const [activeSection, setActiveSection] = useState('mileage')
 
   async function loadExpenses() {
     setLoading(true)
@@ -481,18 +482,119 @@ export default function Expenses() {
       <div className="page-header">
         <h1>Expenses</h1>
         <div className="card-actions">
-          <button
-            className="btn-secondary"
-            onClick={() => exportToCsv(`expenses-${new Date().toISOString().slice(0, 10)}.csv`, expenses, EXPENSE_CSV_COLUMNS)}
-          >
-            Export CSV
-          </button>
-          <button onClick={() => { setShowForm((v) => !v); setForm(emptyForm()) }}>
-            {showForm ? 'Cancel' : '+ Add Expense'}
-          </button>
+          {activeSection === 'mileage' ? (
+            <>
+              <button
+                className="btn-secondary"
+                onClick={() => exportToCsv(`mileage-${new Date().toISOString().slice(0, 10)}.csv`, mileageLogs, MILEAGE_CSV_COLUMNS)}
+              >
+                Export CSV
+              </button>
+              <button onClick={() => { setShowMileageForm((v) => !v); setMileageForm(emptyMileageForm()) }}>
+                {showMileageForm ? 'Cancel' : '+ Log Mileage'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn-secondary"
+                onClick={() => exportToCsv(`expenses-${new Date().toISOString().slice(0, 10)}.csv`, expenses, EXPENSE_CSV_COLUMNS)}
+              >
+                Export CSV
+              </button>
+              <button onClick={() => { setShowForm((v) => !v); setForm(emptyForm()) }}>
+                {showForm ? 'Cancel' : '+ Add Expense'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
+      <div className="tab-bar">
+        <button type="button" className={activeSection === 'mileage' ? 'tab active' : 'tab'}
+          onClick={() => setActiveSection('mileage')}>
+          Vehicle Mileage
+        </button>
+        <button type="button" className={activeSection === 'dollar' ? 'tab active' : 'tab'}
+          onClick={() => setActiveSection('dollar')}>
+          Expenses
+        </button>
+      </div>
+
+      <datalist id="vehicle-names">
+        {vehicleNames.map((v) => <option key={v} value={v} />)}
+      </datalist>
+
+      {activeSection === 'mileage' ? (
+        <>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <span className="stat-value">{mileageThisMonthTotal.toLocaleString()} mi</span>
+              <span className="stat-label">This Month</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{mileageAllTimeTotal.toLocaleString()} mi</span>
+              <span className="stat-label">All Time</span>
+            </div>
+          </div>
+
+          {mileageByVehicle.length > 0 && (
+            <div className="stat-grid">
+              {mileageByVehicle.map((v) => (
+                <div className="stat-card" key={v.vehicle}>
+                  <span className="stat-value">{v.allTime.toLocaleString()} mi</span>
+                  <span className="stat-label">{v.vehicle} — {v.thisMonth.toLocaleString()} mi this month</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showMileageForm && (
+            <form className="card form-grid" onSubmit={handleAddMileage}>
+              <input placeholder="Vehicle (e.g. Truck, Van)" required list="vehicle-names" value={mileageForm.vehicle}
+                onChange={(e) => setMileageForm({ ...mileageForm, vehicle: e.target.value })} />
+
+              <input type="number" step="0.1" placeholder="Miles" required value={mileageForm.miles}
+                onChange={(e) => setMileageForm({ ...mileageForm, miles: e.target.value })} />
+
+              <input type="date" required value={mileageForm.log_date}
+                onChange={(e) => setMileageForm({ ...mileageForm, log_date: e.target.value })} />
+
+              <input placeholder="Purpose (e.g. Job site visits)" value={mileageForm.purpose}
+                onChange={(e) => setMileageForm({ ...mileageForm, purpose: e.target.value })} />
+
+              <textarea placeholder="Notes" value={mileageForm.notes}
+                onChange={(e) => setMileageForm({ ...mileageForm, notes: e.target.value })} />
+
+              <button type="submit">Save Mileage</button>
+            </form>
+          )}
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : mileageLogs.length === 0 ? (
+            <p className="empty-state">No mileage logged yet.</p>
+          ) : (
+            <div className="card-list">
+              {mileageLogs.map((log) => (
+                <MileageCard
+                  key={log.id}
+                  log={log}
+                  busy={busyMileageId === log.id}
+                  isEditing={editingMileageId === log.id}
+                  editForm={editMileageForm}
+                  onEditFormChange={setEditMileageForm}
+                  onStartEdit={startEditMileage}
+                  onSaveEdit={handleUpdateMileage}
+                  onCancelEdit={cancelEditMileage}
+                  onDelete={deleteMileage}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+      <>
       <div className="stat-grid">
         <div className="stat-card">
           <span className="stat-value">${thisMonthTotal.toFixed(2)}</span>
@@ -628,92 +730,9 @@ export default function Expenses() {
               </div>
             )}
           </section>
-
-          <section>
-            <div className="page-header">
-              <h2 style={{ margin: 0 }}>Vehicle Mileage</h2>
-              <div className="card-actions">
-                <button
-                  className="btn-secondary"
-                  onClick={() => exportToCsv(`mileage-${new Date().toISOString().slice(0, 10)}.csv`, mileageLogs, MILEAGE_CSV_COLUMNS)}
-                >
-                  Export CSV
-                </button>
-                <button onClick={() => { setShowMileageForm((v) => !v); setMileageForm(emptyMileageForm()) }}>
-                  {showMileageForm ? 'Cancel' : '+ Log Mileage'}
-                </button>
-              </div>
-            </div>
-
-            <datalist id="vehicle-names">
-              {vehicleNames.map((v) => <option key={v} value={v} />)}
-            </datalist>
-
-            <div className="stat-grid">
-              <div className="stat-card">
-                <span className="stat-value">{mileageThisMonthTotal.toLocaleString()} mi</span>
-                <span className="stat-label">This Month</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-value">{mileageAllTimeTotal.toLocaleString()} mi</span>
-                <span className="stat-label">All Time</span>
-              </div>
-            </div>
-
-            {mileageByVehicle.length > 0 && (
-              <div className="stat-grid">
-                {mileageByVehicle.map((v) => (
-                  <div className="stat-card" key={v.vehicle}>
-                    <span className="stat-value">{v.allTime.toLocaleString()} mi</span>
-                    <span className="stat-label">{v.vehicle} — {v.thisMonth.toLocaleString()} mi this month</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {showMileageForm && (
-              <form className="card form-grid" onSubmit={handleAddMileage}>
-                <input placeholder="Vehicle (e.g. Truck, Van)" required list="vehicle-names" value={mileageForm.vehicle}
-                  onChange={(e) => setMileageForm({ ...mileageForm, vehicle: e.target.value })} />
-
-                <input type="number" step="0.1" placeholder="Miles" required value={mileageForm.miles}
-                  onChange={(e) => setMileageForm({ ...mileageForm, miles: e.target.value })} />
-
-                <input type="date" required value={mileageForm.log_date}
-                  onChange={(e) => setMileageForm({ ...mileageForm, log_date: e.target.value })} />
-
-                <input placeholder="Purpose (e.g. Job site visits)" value={mileageForm.purpose}
-                  onChange={(e) => setMileageForm({ ...mileageForm, purpose: e.target.value })} />
-
-                <textarea placeholder="Notes" value={mileageForm.notes}
-                  onChange={(e) => setMileageForm({ ...mileageForm, notes: e.target.value })} />
-
-                <button type="submit">Save Mileage</button>
-              </form>
-            )}
-
-            {mileageLogs.length === 0 ? (
-              <p className="empty-state">No mileage logged yet.</p>
-            ) : (
-              <div className="card-list">
-                {mileageLogs.map((log) => (
-                  <MileageCard
-                    key={log.id}
-                    log={log}
-                    busy={busyMileageId === log.id}
-                    isEditing={editingMileageId === log.id}
-                    editForm={editMileageForm}
-                    onEditFormChange={setEditMileageForm}
-                    onStartEdit={startEditMileage}
-                    onSaveEdit={handleUpdateMileage}
-                    onCancelEdit={cancelEditMileage}
-                    onDelete={deleteMileage}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
         </>
+      )}
+      </>
       )}
 
       {lightboxPhoto && (
