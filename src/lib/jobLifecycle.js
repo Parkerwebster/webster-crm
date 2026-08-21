@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { localDateStr } from './format'
 
 export const STATUS_FLOW = ['quoted', 'scheduled', 'completed', 'invoiced', 'paid']
 
@@ -22,7 +23,7 @@ function computeNextServiceDate(interval, fromDate = new Date()) {
   else if (interval === 'biannual') d.setMonth(d.getMonth() + 6)
   else if (interval === 'annual') d.setFullYear(d.getFullYear() + 1)
   else return null
-  return d.toISOString().slice(0, 10)
+  return localDateStr(d)
 }
 
 export async function advanceJobStatus(job, { accountId } = {}) {

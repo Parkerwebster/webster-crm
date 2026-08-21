@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAccount } from '../context/AccountContext'
 import { exportToCsv } from '../lib/csv'
+import { localDateStr } from '../lib/format'
 
 const CUSTOMER_CSV_COLUMNS = [
   { label: 'Name', value: (c) => c.name },
@@ -56,7 +57,7 @@ export default function Customers() {
   )
 
   function handleExportCsv() {
-    exportToCsv(`customers-${new Date().toISOString().slice(0, 10)}.csv`, filtered, CUSTOMER_CSV_COLUMNS)
+    exportToCsv(`customers-${localDateStr()}.csv`, filtered, CUSTOMER_CSV_COLUMNS)
   }
 
   return (

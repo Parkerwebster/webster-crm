@@ -14,6 +14,10 @@ export const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   return { value, label: formatTime(value) }
 })
 
+export function localDateStr(date = new Date()) {
+  return date.toLocaleDateString('en-CA') // YYYY-MM-DD, local time
+}
+
 export function formatTimestamp(isoString) {
   if (!isoString) return ''
   return new Date(isoString).toLocaleString('en-US', {

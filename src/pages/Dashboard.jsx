@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import { formatTimeRange } from '../lib/format'
+import { formatTimeRange, localDateStr } from '../lib/format'
 import { useAccount } from '../context/AccountContext'
 
 function buildRouteUrl(jobs) {
@@ -34,9 +34,9 @@ export default function Dashboard() {
     in14Days.setDate(today.getDate() + 14)
     const sevenDaysAgo = new Date(today)
     sevenDaysAgo.setDate(today.getDate() - 7)
-    const todayStr = today.toISOString().slice(0, 10)
-    const weekStr = in7Days.toISOString().slice(0, 10)
-    const dueStr = in14Days.toISOString().slice(0, 10)
+    const todayStr = localDateStr(today)
+    const weekStr = localDateStr(in7Days)
+    const dueStr = localDateStr(in14Days)
 
     const [
       { data: jobsData },

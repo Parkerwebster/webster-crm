@@ -5,7 +5,7 @@ import { buildQuoteEmail } from '../lib/quoteEmail'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { RECURRING_OPTIONS } from '../lib/jobLifecycle'
-import { TIME_OPTIONS } from '../lib/format'
+import { TIME_OPTIONS, localDateStr } from '../lib/format'
 import { exportToCsv } from '../lib/csv'
 import { emptyServiceLine, combineServiceLines } from '../lib/services'
 import ServiceLineItems from '../components/ServiceLineItems'
@@ -219,7 +219,7 @@ export default function Leads() {
       <div className="page-header">
         <h1>Leads</h1>
         <div className="card-actions">
-          <button className="btn-secondary" onClick={() => exportToCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, leads, LEAD_CSV_COLUMNS)}>
+          <button className="btn-secondary" onClick={() => exportToCsv(`leads-${localDateStr()}.csv`, leads, LEAD_CSV_COLUMNS)}>
             Export CSV
           </button>
           <button onClick={() => { setShowForm((v) => !v); setForm(EMPTY_LEAD_FORM) }}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { buildQuoteEmail } from '../lib/quoteEmail'
-import { formatTimeRange } from '../lib/format'
+import { formatTimeRange, localDateStr } from '../lib/format'
 import QuoteEmailModal from '../components/QuoteEmailModal'
 import { useAccount } from '../context/AccountContext'
 import { nextStatus, advanceJobStatus } from '../lib/jobLifecycle'
@@ -85,7 +85,7 @@ export default function Jobs() {
     alert('Payment link copied!')
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr()
 
   const filtered = jobs.filter((job) => {
     if (filter === 'upcoming') return job.scheduled_date && job.scheduled_date >= today && job.status !== 'paid'

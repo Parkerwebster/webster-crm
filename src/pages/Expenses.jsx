@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAccount } from '../context/AccountContext'
 import { exportToCsv } from '../lib/csv'
-import { formatTimestamp } from '../lib/format'
+import { formatTimestamp, localDateStr } from '../lib/format'
 
 const CATEGORY_OPTIONS = [
   'Supplies',
@@ -43,7 +43,7 @@ function emptyForm() {
     description: '',
     category: CATEGORY_OPTIONS[0],
     amount: '',
-    expense_date: new Date().toISOString().slice(0, 10),
+    expense_date: localDateStr(),
     notes: '',
     recurrence: 'one_time',
     recurrence_day: 1,
@@ -56,7 +56,7 @@ function expenseToEditForm(exp) {
     description: exp.description || '',
     category: exp.category || CATEGORY_OPTIONS[0],
     amount: exp.amount != null ? String(exp.amount) : '',
-    expense_date: exp.expense_date || new Date().toISOString().slice(0, 10),
+    expense_date: exp.expense_date || localDateStr(),
     notes: exp.notes || '',
     recurrence: exp.recurrence || 'one_time',
     recurrence_day: exp.recurrence_day || 1,
@@ -80,7 +80,7 @@ function receiptUrl(path) {
 function emptyMileageForm() {
   return {
     vehicle: '',
-    log_date: new Date().toISOString().slice(0, 10),
+    log_date: localDateStr(),
     miles: '',
     purpose: '',
     notes: '',
@@ -90,7 +90,7 @@ function emptyMileageForm() {
 function mileageToEditForm(log) {
   return {
     vehicle: log.vehicle || '',
-    log_date: log.log_date || new Date().toISOString().slice(0, 10),
+    log_date: log.log_date || localDateStr(),
     miles: log.miles != null ? String(log.miles) : '',
     purpose: log.purpose || '',
     notes: log.notes || '',
@@ -490,7 +490,7 @@ export default function Expenses() {
             <>
               <button
                 className="btn-secondary"
-                onClick={() => exportToCsv(`mileage-${new Date().toISOString().slice(0, 10)}.csv`, mileageLogs, MILEAGE_CSV_COLUMNS)}
+                onClick={() => exportToCsv(`mileage-${localDateStr()}.csv`, mileageLogs, MILEAGE_CSV_COLUMNS)}
               >
                 Export CSV
               </button>
@@ -502,7 +502,7 @@ export default function Expenses() {
             <>
               <button
                 className="btn-secondary"
-                onClick={() => exportToCsv(`expenses-${new Date().toISOString().slice(0, 10)}.csv`, expenses, EXPENSE_CSV_COLUMNS)}
+                onClick={() => exportToCsv(`expenses-${localDateStr()}.csv`, expenses, EXPENSE_CSV_COLUMNS)}
               >
                 Export CSV
               </button>
