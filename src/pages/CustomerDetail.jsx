@@ -36,6 +36,7 @@ function jobPhotoUrl(path) {
 
 function customerToInfoForm(customer) {
   return {
+    name: customer.name || '',
     phone: customer.phone || '',
     email: customer.email || '',
     address: customer.address || '',
@@ -194,6 +195,7 @@ export default function CustomerDetail() {
   async function handleUpdateInfo(e) {
     e.preventDefault()
     await supabase.from('customers').update({
+      name: infoForm.name,
       phone: infoForm.phone,
       email: infoForm.email,
       address: infoForm.address,
@@ -358,6 +360,8 @@ export default function CustomerDetail() {
       <>
       {editingInfo ? (
         <form className="card form-grid" onSubmit={handleUpdateInfo}>
+          <input placeholder="Name" required value={infoForm.name}
+            onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })} />
           <input placeholder="Phone" value={infoForm.phone}
             onChange={(e) => setInfoForm({ ...infoForm, phone: e.target.value })} />
           <input placeholder="Email" value={infoForm.email}
